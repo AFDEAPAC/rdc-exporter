@@ -3,33 +3,37 @@ package exporter
 import (
 	"log/slog"
 
-	"github.com/ROCm/rdc-exporter/pkg/rdc"
+	"github.com/ROCm/rdc-exporter/pkg/scraper/rdc"
 )
 
 type Exporter struct {
-	rc *rdc.Client
+	rs *rdc.RdcScraper
 }
 
 // New creates a new instance of the Exporter with the provided RDC client.
 func NewExporter() (*Exporter, error) {
 
-	// Initialize the RDC client
-	client, err := rdc.NewClient()
+	var (
+		gpuGroupName = "rdc_exporter_group"
+	)
+
+	// Initialize the RDC scraper
+	rdcScraper, err := rdc.NewRdcScraper(gpuGroupName)
 	if err != nil {
-		slog.Error("Failed to create RDC client", "error", err)
+		slog.Error("Failed to create RDC scraper", "error", err)
 		return nil, err
 	}
 
 	exporter := &Exporter{
-		rc: client,
+		rs: rdcScraper,
 	}
 
 	return exporter, nil
 }
 
 func (e *Exporter) Close() error {
-	if err := e.rc.Close(); err != nil {
-		slog.Error("Failed to close RDC client", "error", err)
+	if err := e.rs.Close(); err != nil {
+		slog.Error("Failed to close RDC scraper", "error", err)
 		return err
 	}
 
