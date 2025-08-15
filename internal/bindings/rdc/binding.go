@@ -1,8 +1,8 @@
 package rdc
 
 /*
-#cgo linux CFLAGS: -I/opt/rocm-6.4.1/include
-#cgo linux LDFLAGS: -Wl,-rpath,'$ORIGIN' -Wl,-rpath,/opt/rocm-6.4.1/lib -L/opt/rocm-6.4.1/lib -lrdc_bootstrap -lstdc++ -ldl -lpthread -lm
+#cgo linux CFLAGS: -I/opt/rocm/include
+#cgo linux LDFLAGS: -Wl,-rpath,'$ORIGIN' -Wl,-rpath,/opt/rocm/lib -L/opt/rocm/lib -lrdc_bootstrap -lstdc++ -ldl -lpthread -lm
 
 #include <stdbool.h>
 #include <stdint.h>

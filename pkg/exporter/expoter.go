@@ -14,11 +14,12 @@ type Exporter struct {
 func NewExporter() (*Exporter, error) {
 
 	var (
-		gpuGroupName = "rdc_exporter_group"
+		rdcFieldGroupName = "rdc_exporter_field_group"
+		rdcGpuGroupName   = "rdc_exporter_group"
 	)
 
 	// Initialize the RDC scraper
-	rdcScraper, err := rdc.NewRdcScraper(gpuGroupName)
+	rdcScraper, err := rdc.NewRdcScraper(rdcGpuGroupName, rdcFieldGroupName)
 	if err != nil {
 		slog.Error("Failed to create RDC scraper", "error", err)
 		return nil, err
