@@ -19,6 +19,13 @@ const (
 	RDC_FI_PROF_SM_ACTIVE FieldID = C.RDC_FI_PROF_SM_ACTIVE
 )
 
+func NewFieldIDFromInt(id int) FieldID {
+	if id < 0 || id > 0xFFFF {
+		return FieldID(0)
+	}
+	return FieldID(C.rdc_field_t(id))
+}
+
 func (f FieldID) Name() string {
 	cname := C.field_id_string(C.rdc_field_t(f))
 	if cname == nil {
