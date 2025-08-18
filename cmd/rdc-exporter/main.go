@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/ROCm/rdc-exporter/pkg/exporter"
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,13 +19,15 @@ import (
 func main() {
 
 	var (
-		addr        string
-		enableDebug bool
+		addr           string
+		enableDebug    bool
+		selfMonitoring bool
 	)
 
 	// Define command line flags
 	pflag.StringVarP(&addr, "listen-address", "l", ":8080", "Address to listen on for HTTP requests")
 	pflag.BoolVarP(&enableDebug, "debug", "d", false, "Enable debug logging")
+	pflag.BoolVar(&selfMonitoring, "self-monitoring", false, "Enable self-monitoring metrics")
 	pflag.Parse()
 
 	// Configure the logger
@@ -37,22 +39,60 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, logOpts)))
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	reg := prometheus.NewRegistry()
-	reg.Register(collectors.NewGoCollector())
-	reg.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	if selfMonitoring {
+		reg.Register(collectors.NewGoCollector())
+		reg.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	}
 
-	_, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
-
-	exp, err := exporter.NewExporter()
+	exp, err := exporter.NewExporter(reg)
 	if err != nil {
 		slog.Error("Failed to create exporter: %v", err)
 		return
 	}
 	defer exp.Close()
 
-	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		fmt.Printf("http server error: %v\n", err)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				slog.Info("Shutting down exporter")
+				return
+			default:
+				exp.Scrape()
+				time.Sleep(5 * time.Second) // Scrape every 5 seconds
+			}
+		}
+	}()
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: http.DefaultServeMux,
 	}
+
+	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/metrics", http.StatusFound)
+	})
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("http server error", "err", err)
+		}
+	}()
+
+	// Wait for Ctrl+C or SIGTERM
+	<-ctx.Done()
+	slog.Info("Shutting down exporter and HTTP server...")
+
+	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		slog.Error("HTTP server shutdown error", "err", err)
+	}
+
+	slog.Info("Exporter exited")
 }

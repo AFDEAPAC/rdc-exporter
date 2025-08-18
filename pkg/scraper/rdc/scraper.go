@@ -1,10 +1,15 @@
 package rdc
 
 import (
+	"errors"
 	"log/slog"
 	"reflect"
+	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/ROCm/rdc-exporter/internal/bindings/rdc"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type RdcScraper struct {
@@ -16,12 +21,14 @@ type RdcScraper struct {
 	gpuGroupName   string
 	gpuIndexs      []uint32
 
+	gaugeVecs map[rdc.FieldID]*prometheus.GaugeVec
+
 	maxiumKeepAge     float32
 	maxiumKeepSamples int32
 	updateFrequencey  int64
 }
 
-func NewRdcScraper(gpuGroupName string, fieldGroupName string) (*RdcScraper, error) {
+func NewRdcScraper(gpuGroupName string, fieldGroupName string, reg *prometheus.Registry) (*RdcScraper, error) {
 	slog.Info("Initializing RDC scraper", "gpuGroupName", gpuGroupName)
 
 	slog.Debug("Initializing RDC")
@@ -53,6 +60,7 @@ func NewRdcScraper(gpuGroupName string, fieldGroupName string) (*RdcScraper, err
 		handler:           handler,
 		fieldGroupName:    fieldGroupName,
 		fieldIDs:          []rdc.FieldID{rdc.RDC_FI_GPU_CLOCK, rdc.RDC_FI_GPU_TEMP, rdc.RDC_FI_PROF_SM_ACTIVE},
+		gaugeVecs:         make(map[rdc.FieldID]*prometheus.GaugeVec),
 		gpuGroupName:      gpuGroupName,
 		gpuIndexs:         gpuIndexs,
 		maxiumKeepAge:     3600.0,
@@ -75,6 +83,12 @@ func NewRdcScraper(gpuGroupName string, fieldGroupName string) (*RdcScraper, err
 	// Start watching fields
 	if err := scraper.WatchFields(); err != nil {
 		slog.Error("Failed to watch fields", "err", err)
+		return nil, err
+	}
+
+	// Create GaugeVecs for the fields
+	if err := scraper.CreateGaugeVecs(reg); err != nil {
+		slog.Error("Failed to create GaugeVecs", "err", err)
 		return nil, err
 	}
 
@@ -137,6 +151,32 @@ func (r *RdcScraper) CreateFieldGroup() error {
 
 	r.fieldGroupID = groupID
 	slog.Debug("Field group created successfully", "groupID", groupID, "name", r.fieldGroupName)
+	return nil
+}
+
+func (r *RdcScraper) CreateGaugeVecs(reg *prometheus.Registry) error {
+	slog.Debug("Creating GaugeVecs for field IDs", "fieldIDs", r.fieldIDs)
+
+	for _, fieldID := range r.fieldIDs {
+		if _, exists := r.gaugeVecs[fieldID]; exists {
+			slog.Debug("GaugeVec already exists", "fieldID", fieldID)
+			continue
+		}
+
+		name := fieldID.Name()
+		gv := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: strings.ToLower(name),
+				Help: "RDC field value for " + name,
+			},
+			[]string{"gpu_index"},
+		)
+		reg.MustRegister(gv)
+		r.gaugeVecs[fieldID] = gv
+		slog.Debug("Created GaugeVec", "fieldID", fieldID, "name", name)
+	}
+
+	slog.Debug("All GaugeVecs created successfully", "count", len(r.gaugeVecs))
 	return nil
 }
 
@@ -214,6 +254,78 @@ func (r *RdcScraper) GetAllGpuGroups() ([]*rdc.GpuGroupInfo, error) {
 
 	slog.Debug("Retrieved all groups", "count", len(groups))
 	return groups, nil
+}
+
+func (r *RdcScraper) Scrape() error {
+
+	type cachedValue struct {
+		gpuIndex uint32
+		fieldID  rdc.FieldID
+		value    float64
+	}
+	values := make(chan cachedValue, len(r.gpuIndexs)*len(r.fieldIDs))
+
+	// fetch the latest field values
+	wg := sync.WaitGroup{}
+	slog.Debug("Scraping field values")
+	for i := range r.gpuIndexs {
+		wg.Add(1)
+		go func(gpuIndex uint32) {
+			defer wg.Done()
+			for _, fieldID := range r.fieldIDs {
+				slog.Debug("Fetching latest field value", "gpuIndex", gpuIndex, "fieldID", fieldID)
+				fv, err := r.handler.GetLatestFieldValue(gpuIndex, fieldID)
+				if err != nil {
+					slog.Error("Failed to get latest field value", "gpuIndex", gpuIndex, "fieldID", fieldID, "err", err)
+					continue
+				}
+
+				value, _ := fv.FloatValue()
+				slog.Debug("Fetched latest field value", "gpuIndex", gpuIndex, "fieldID", fieldID, "value", value)
+				values <- cachedValue{
+					fieldID:  fieldID,
+					gpuIndex: gpuIndex,
+					value:    value,
+				}
+			}
+		}(r.gpuIndexs[i])
+	}
+	wg.Wait()
+	close(values)
+
+	// Merge all values into a map
+	results := make(map[rdc.FieldID]map[uint32]float64)
+	for val := range values {
+		if _, exists := results[val.fieldID]; !exists {
+			results[val.fieldID] = make(map[uint32]float64)
+		}
+		results[val.fieldID][val.gpuIndex] = val.value
+	}
+
+	if len(results) == 0 {
+		// If no field values were updated, probably need to reconnect to RDC
+		slog.Warn("No field values were updated during scrape")
+		return errors.New("no field values updated")
+	}
+
+	// Update the GaugeVecs with the new values
+	slog.Debug("Updating GaugeVecs with new values")
+	for fieldID, gpuValues := range results {
+		gaugeVec, exists := r.gaugeVecs[fieldID]
+		if !exists {
+			slog.Warn("GaugeVec does not exist for field ID", "fieldID", fieldID)
+			continue
+		}
+
+		for gpuIndex, value := range gpuValues {
+			slog.Debug("Setting GaugeVec value", "fieldID", fieldID, "gpuIndex", gpuIndex, "value", value)
+			gi := strconv.FormatUint(uint64(gpuIndex), 10)
+			gaugeVec.WithLabelValues(gi).Set(value)
+		}
+	}
+
+	slog.Debug("Scrape completed successfully")
+	return nil
 }
 
 func (r *RdcScraper) WatchFields() error {

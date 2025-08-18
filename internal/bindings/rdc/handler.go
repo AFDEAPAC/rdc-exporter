@@ -12,6 +12,7 @@ package rdc
 import "C"
 import (
 	"fmt"
+	"time"
 	"unsafe"
 )
 
@@ -164,6 +165,30 @@ func (h *Handler) GetGpuGroupInfo(groupID uint32) (*GpuGroupInfo, error) {
 	}
 
 	return NewGpuGroupInfo(groupID, &gpuInfo), nil
+}
+
+func (h *Handler) GetLatestFieldValue(gpuIndex uint32, fieldId FieldID) (*FieldValue, error) {
+	cGpuIndex := C.uint32_t(gpuIndex)
+	cFieldId := C.rdc_field_t(fieldId)
+	var value C.rdc_field_value
+
+	st := C.rdc_field_get_latest_value(h.handle, cGpuIndex, cFieldId, &value)
+	switch st {
+	case C.RDC_ST_OK:
+		return NewFieldValue(&value), nil
+	case C.RDC_ST_NOT_FOUND:
+		now := time.Now().Unix()
+		empty := &FieldValue{
+			FieldID:   FieldID(cFieldId),
+			Status:    int(C.RDC_ST_NOT_FOUND),
+			Timestamp: uint64(now),
+			Type:      Double,
+			Value:     FieldValueData{DoubleValue: 0.0},
+		}
+		return empty, nil
+	}
+
+	return nil, fmt.Errorf("rdc_field_get_latest_value failed: status=%d", int(st))
 }
 
 func (h *Handler) Stop() error {

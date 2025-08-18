@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/ROCm/rdc-exporter/pkg/scraper/rdc"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Exporter struct {
@@ -11,7 +12,7 @@ type Exporter struct {
 }
 
 // New creates a new instance of the Exporter with the provided RDC client.
-func NewExporter() (*Exporter, error) {
+func NewExporter(reg *prometheus.Registry) (*Exporter, error) {
 
 	var (
 		rdcFieldGroupName = "rdc_exporter_field_group"
@@ -19,7 +20,7 @@ func NewExporter() (*Exporter, error) {
 	)
 
 	// Initialize the RDC scraper
-	rdcScraper, err := rdc.NewRdcScraper(rdcGpuGroupName, rdcFieldGroupName)
+	rdcScraper, err := rdc.NewRdcScraper(rdcGpuGroupName, rdcFieldGroupName, reg)
 	if err != nil {
 		slog.Error("Failed to create RDC scraper", "error", err)
 		return nil, err
@@ -39,5 +40,13 @@ func (e *Exporter) Close() error {
 	}
 
 	slog.Info("Exporter closed successfully")
+	return nil
+}
+
+func (e *Exporter) Scrape() error {
+	if err := e.rs.Scrape(); err != nil {
+		slog.Error("Failed to scrape RDC data", "error", err)
+		return err
+	}
 	return nil
 }
