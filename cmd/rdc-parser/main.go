@@ -68,9 +68,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	entries := make(map[string]*catalog.CatalogEntry)
-	// valMap := make(map[string]int)
-	// descMap := make(map[string]string)
+	entries := make(map[string]*catalog.Entity)
 	lastVal := -1
 
 	reField := regexp.MustCompile(`^\s*(RDC_[A-Z0-9_]+)\s*(=\s*([A-Za-z0-9_]+))?\s*$`)
@@ -122,7 +120,7 @@ func main() {
 		}
 		lastVal = val
 
-		entry := &catalog.CatalogEntry{
+		entry := &catalog.Entity{
 			Key:      key,
 			PromName: toPromName(val),
 			Field:    strconv.Itoa(val),
@@ -134,7 +132,7 @@ func main() {
 
 	// Convert entries map to slice
 	out := &catalog.Catalog{
-		Metrics: make([]*catalog.CatalogEntry, 0, len(entries)),
+		Metrics: make([]*catalog.Entity, 0, len(entries)),
 	}
 	for _, entry := range entries {
 		out.Metrics = append(out.Metrics, entry)

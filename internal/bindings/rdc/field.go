@@ -13,12 +13,6 @@ import "C"
 
 type FieldID C.rdc_field_t
 
-const (
-	RDC_FI_GPU_CLOCK      FieldID = C.RDC_FI_GPU_CLOCK
-	RDC_FI_GPU_TEMP       FieldID = C.RDC_FI_GPU_TEMP
-	RDC_FI_PROF_SM_ACTIVE FieldID = C.RDC_FI_PROF_SM_ACTIVE
-)
-
 func NewFieldIDFromInt(id int) FieldID {
 	if id < 0 || id > 0xFFFF {
 		return FieldID(0)

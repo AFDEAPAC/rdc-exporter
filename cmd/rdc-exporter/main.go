@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ROCm/rdc-exporter/pkg/catalog"
 	"github.com/ROCm/rdc-exporter/pkg/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -39,6 +40,13 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, logOpts)))
 
+	// Parse the catalog
+	catalg, err := catalog.ParseCatalogYAML()
+	if err != nil {
+		slog.Error("Failed to parse catalog YAML", "error", err)
+		return
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -48,7 +56,7 @@ func main() {
 		reg.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	}
 
-	exp, err := exporter.NewExporter(reg)
+	exp, err := exporter.NewExporter(reg, catalg)
 	if err != nil {
 		slog.Error("Failed to create exporter: %v", err)
 		return

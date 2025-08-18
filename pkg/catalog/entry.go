@@ -1,6 +1,6 @@
 package catalog
 
-type CatalogEntry struct {
+type Entity struct {
 	Key      string  `yaml:"key"`             // E.g. RDC_FI_PROF_SM_ACTIVE
 	PromName string  `yaml:"prom_name"`       // E.g. valubusy
 	Field    string  `yaml:"field"`           // E.g. "812"
