@@ -26,15 +26,17 @@ func main() {
 		enableDebug    bool
 		fields         []string
 		fieldsFilePath string
+		gpuIndexes     []int
 		selfMonitoring bool
 	)
 
 	// Define command line flags
 	pflag.StringVarP(&addr, "listen-address", "l", ":8080", "Address to listen on for HTTP requests")
+	pflag.BoolVarP(&enableDebug, "debug", "d", false, "Enable debug logging")
 	pflag.StringVar(&catalogPath, "catalog", "", "Path to the catalog YAML file")
 	pflag.StringSliceVarP(&fields, "fields", "e", nil, "Fields to scrape (e.g., 100,812)")
 	pflag.StringVarP(&fieldsFilePath, "fields-file", "f", "", "Path to a file containing fields to scrape (one per line)")
-	pflag.BoolVarP(&enableDebug, "debug", "d", false, "Enable debug logging")
+	pflag.IntSliceVarP(&gpuIndexes, "gpu-indexes", "i", nil, "GPU indexes to scrape (e.g., 0,1,2)")
 	pflag.BoolVar(&selfMonitoring, "self-monitoring", false, "Enable self-monitoring metrics")
 	pflag.Parse()
 
@@ -89,7 +91,7 @@ func main() {
 		reg.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	}
 
-	exp, err := exporter.NewExporter(reg, catalg)
+	exp, err := exporter.NewExporter(reg, catalg, gpuIndexes)
 	if err != nil {
 		slog.Error("Failed to create exporter: %v", err)
 		return

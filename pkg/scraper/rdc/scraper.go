@@ -30,7 +30,7 @@ type RdcScraper struct {
 	updateFrequencey  int64
 }
 
-func NewRdcScraper(gpuGroupName string, fieldGroupName string, entities []*catalog.Entity, reg *prometheus.Registry) (*RdcScraper, error) {
+func NewRdcScraper(gpuGroupName string, fieldGroupName string, entities []*catalog.Entity, reg *prometheus.Registry, gpuIndexes []int) (*RdcScraper, error) {
 	slog.Info("Initializing RDC scraper", "gpuGroupName", gpuGroupName)
 
 	slog.Debug("Initializing RDC")
@@ -51,12 +51,38 @@ func NewRdcScraper(gpuGroupName string, fieldGroupName string, entities []*catal
 
 	// Get all GPU indexs
 	slog.Debug("Retrieving all GPU indexes")
-	gpuIndexs, err := handler.GetAllGpuIndexes()
+	hostGpuIndexs, err := handler.GetAllGpuIndexes()
 	if err != nil {
 		slog.Error("Failed to get GPU indexs", "err", err)
 		return nil, err
 	}
-	slog.Debug("Found GPU indexes", "count", len(gpuIndexs), "indexes", gpuIndexs)
+	slog.Debug("Found GPU indexes form RDC", "count", len(hostGpuIndexs), "indexes", hostGpuIndexs)
+
+	// Filter GPU indexes if provided
+	if gpuIndexes != nil && len(gpuIndexes) > 0 {
+		providedGpuIndexes := map[uint32]bool{}
+		for _, idx := range gpuIndexes {
+			if idx < 0 || idx >= len(hostGpuIndexs) {
+				slog.Warn("Invalid GPU index provided, skipping", "index", idx)
+				continue
+			}
+			providedGpuIndexes[uint32(idx)] = true
+		}
+
+		slog.Debug("Filtering GPU indexes based on provided list", "gpuIndexes", gpuIndexes)
+		filteredGpuIndexs := make([]uint32, 0, len(gpuIndexes))
+		for _, idx := range hostGpuIndexs {
+			if providedGpuIndexes[uint32(idx)] {
+				slog.Debug("Keeping GPU index", "index", idx)
+				filteredGpuIndexs = append(filteredGpuIndexs, idx)
+			}
+		}
+		if len(filteredGpuIndexs) == 0 {
+			slog.Error("No valid GPU indexes provided, cannot proceed")
+			return nil, errors.New("no valid GPU indexes provided")
+		}
+		hostGpuIndexs = filteredGpuIndexs
+	}
 
 	scraper := &RdcScraper{
 		handler:           handler,
@@ -65,7 +91,7 @@ func NewRdcScraper(gpuGroupName string, fieldGroupName string, entities []*catal
 		entities:          entities,
 		gaugeVecs:         make(map[rdc.FieldID]*prometheus.GaugeVec),
 		gpuGroupName:      gpuGroupName,
-		gpuIndexs:         gpuIndexs,
+		gpuIndexs:         hostGpuIndexs,
 		maxiumKeepAge:     3600.0,
 		maxiumKeepSamples: 1000,
 		updateFrequencey:  10000000,

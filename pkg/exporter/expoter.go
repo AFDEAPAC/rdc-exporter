@@ -13,7 +13,7 @@ type Exporter struct {
 }
 
 // New creates a new instance of the Exporter with the provided RDC client.
-func NewExporter(reg *prometheus.Registry, catalg *catalog.Catalog) (*Exporter, error) {
+func NewExporter(reg *prometheus.Registry, catalg *catalog.Catalog, gpuIndexes []int) (*Exporter, error) {
 
 	var (
 		rdcFieldGroupName = "rdc_exporter_field_group"
@@ -21,7 +21,7 @@ func NewExporter(reg *prometheus.Registry, catalg *catalog.Catalog) (*Exporter, 
 	)
 
 	// Initialize the RDC scraper
-	rdcScraper, err := rdc.NewRdcScraper(rdcGpuGroupName, rdcFieldGroupName, catalg.Entities, reg)
+	rdcScraper, err := rdc.NewRdcScraper(rdcGpuGroupName, rdcFieldGroupName, catalg.Entities, reg, gpuIndexes)
 	if err != nil {
 		slog.Error("Failed to create RDC scraper", "error", err)
 		return nil, err
