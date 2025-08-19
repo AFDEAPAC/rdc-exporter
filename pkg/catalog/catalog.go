@@ -153,6 +153,27 @@ func mergeEntity(defaultEntity, userEntity *Entity) *Entity {
 	return merged
 }
 
+func (c *Catalog) FilterEntitiesByFields(fields []string) {
+	keep := make(map[*Entity]bool)
+	for _, f := range fields {
+		for _, e := range c.Entities {
+			if e.Metric == f || e.Field == f || e.PromName == f {
+				keep[e] = true
+				break
+			}
+		}
+	}
+
+	filtered := make([]*Entity, 0, len(keep))
+	for _, e := range c.Entities {
+		if keep[e] {
+			e.Disabled = nil
+			filtered = append(filtered, e)
+		}
+	}
+	c.Entities = filtered
+}
+
 func (c *Catalog) removeDisabledMetrics() {
 	enabledEntities := make([]*Entity, 0, len(c.Entities))
 	for _, entity := range c.Entities {

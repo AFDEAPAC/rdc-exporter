@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,12 +24,16 @@ func main() {
 		addr           string
 		catalogPath    string
 		enableDebug    bool
+		fields         []string
+		fieldsFilePath string
 		selfMonitoring bool
 	)
 
 	// Define command line flags
 	pflag.StringVarP(&addr, "listen-address", "l", ":8080", "Address to listen on for HTTP requests")
 	pflag.StringVar(&catalogPath, "catalog", "", "Path to the catalog YAML file")
+	pflag.StringSliceVarP(&fields, "fields", "e", nil, "Fields to scrape (e.g., 100,812)")
+	pflag.StringVarP(&fieldsFilePath, "fields-file", "f", "", "Path to a file containing fields to scrape (one per line)")
 	pflag.BoolVarP(&enableDebug, "debug", "d", false, "Enable debug logging")
 	pflag.BoolVar(&selfMonitoring, "self-monitoring", false, "Enable self-monitoring metrics")
 	pflag.Parse()
@@ -46,6 +51,32 @@ func main() {
 	catalg, err := catalog.ParseCatalogYAML(catalogPath)
 	if err != nil {
 		slog.Error("Failed to parse catalog YAML", "error", err)
+		return
+	}
+
+	if fieldsFilePath != "" {
+		// Read metrics from file, one per line
+		file, err := os.ReadFile(fieldsFilePath)
+		if err != nil {
+			slog.Error("Failed to read fields file", "error", err)
+			return
+		}
+		lines := strings.Split(string(file), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				fields = append(fields, line)
+			}
+		}
+	}
+
+	// If fields are provided, filter the catalog entities
+	if len(fields) > 0 {
+		catalg.FilterEntitiesByFields(fields)
+	}
+
+	if len(catalg.Entities) == 0 {
+		slog.Error("No valid entities found in the catalog")
 		return
 	}
 
