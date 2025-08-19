@@ -21,12 +21,14 @@ func main() {
 
 	var (
 		addr           string
+		catalogPath    string
 		enableDebug    bool
 		selfMonitoring bool
 	)
 
 	// Define command line flags
 	pflag.StringVarP(&addr, "listen-address", "l", ":8080", "Address to listen on for HTTP requests")
+	pflag.StringVar(&catalogPath, "catalog", "", "Path to the catalog YAML file")
 	pflag.BoolVarP(&enableDebug, "debug", "d", false, "Enable debug logging")
 	pflag.BoolVar(&selfMonitoring, "self-monitoring", false, "Enable self-monitoring metrics")
 	pflag.Parse()
@@ -41,7 +43,7 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, logOpts)))
 
 	// Parse the catalog
-	catalg, err := catalog.ParseCatalogYAML()
+	catalg, err := catalog.ParseCatalogYAML(catalogPath)
 	if err != nil {
 		slog.Error("Failed to parse catalog YAML", "error", err)
 		return

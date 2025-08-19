@@ -1,592 +1,592 @@
 metrics:
-  # - key: RDC_FI_INVALID
+  # - metric: RDC_FI_INVALID
   #   prom_name: invalid
   #   field: "0"
   #   scale: 1
   #   desc: Invalid field value
-  # - key: RDC_FI_GPU_COUNT
+  # - metric: RDC_FI_GPU_COUNT
   #   prom_name: gpu_count
   #   field: "1"
   #   scale: 1
   #   desc: GPU count in the system
-  # - key: RDC_FI_DEV_NAME
+  # - metric: RDC_FI_DEV_NAME
   #   prom_name: dev_name
   #   field: "2"
   #   scale: 1
   #   desc: Name of the device
-  # - key: RDC_FI_OAM_ID
+  # - metric: RDC_FI_OAM_ID
   #   prom_name: oam_id
   #   field: "3"
   #   scale: 1
   #   desc: OAM ID of the device
-  - key: RDC_FI_GPU_CLOCK
+  - metric: RDC_FI_GPU_CLOCK
     prom_name: gpu_clock
     field: "100"
     scale: 0.000001
     desc: The current clock for the GPU
-  - key: RDC_FI_MEM_CLOCK
+  - metric: RDC_FI_MEM_CLOCK
     prom_name: mem_clock
     field: "101"
     scale: 1
     desc: Clock for the memory
-  - key: RDC_FI_MEMORY_TEMP
+  - metric: RDC_FI_MEMORY_TEMP
     prom_name: memory_temp
     field: "200"
     scale: 1
     desc: Memory temperature for the device
-  - key: RDC_FI_GPU_TEMP
+  - metric: RDC_FI_GPU_TEMP
     prom_name: gpu_temp
     field: "201"
     scale: 0.001
     desc: Current temperature for the device
-  - key: RDC_FI_POWER_USAGE
+  - metric: RDC_FI_POWER_USAGE
     prom_name: power_usage
     field: "300"
     scale: 0.000001
     desc: Power usage for the device
-  # - key: RDC_FI_PCIE_TX
+  # - metric: RDC_FI_PCIE_TX
   #   prom_name: pcie_tx
   #   field: "400"
   #   scale: 1
   #   desc: PCIe Tx utilization information
-  # - key: RDC_FI_PCIE_RX
+  # - metric: RDC_FI_PCIE_RX
   #   prom_name: pcie_rx
   #   field: "401"
   #   scale: 1
   #   desc: PCIe Rx utilization information
-  # - key: RDC_FI_PCIE_BANDWIDTH
+  # - metric: RDC_FI_PCIE_BANDWIDTH
   #   prom_name: pcie_bandwidth
   #   field: "402"
   #   scale: 1
   #   desc: PCIe bandwidth in Mbps
-  - key: RDC_FI_GPU_UTIL
+  - metric: RDC_FI_GPU_UTIL
     prom_name: gpu_util
     field: "500"
     scale: 1
     desc: GPU Utilization
-  - key: RDC_FI_GPU_MEMORY_USAGE
+  - metric: RDC_FI_GPU_MEMORY_USAGE
     prom_name: gpu_memory_usage
     field: "501"
     scale: 0.000001
     desc: Memory usage of the GPU instance
-  - key: RDC_FI_GPU_MEMORY_TOTAL
+  - metric: RDC_FI_GPU_MEMORY_TOTAL
     prom_name: gpu_memory_total
     field: "502"
     scale: 0.000001
     desc: Total memory of the GPU instance
-  # - key: RDC_FI_GPU_MM_ENC_UTIL
+  # - metric: RDC_FI_GPU_MM_ENC_UTIL
   #   prom_name: gpu_mm_enc_util
   #   field: "503"
   #   scale: 1
   #   desc: Multimedia encoder busy percentage
-  # - key: RDC_FI_GPU_MM_DEC_UTIL
+  # - metric: RDC_FI_GPU_MM_DEC_UTIL
   #   prom_name: gpu_mm_dec_util
   #   field: "504"
   #   scale: 1
   #   desc: Multimedia decoder busy percentage
-  # - key: RDC_FI_GPU_MEMORY_ACTIVITY
+  # - metric: RDC_FI_GPU_MEMORY_ACTIVITY
   #   prom_name: gpu_mem_util
   #   field: "505"
   #   scale: 1
   #   desc: Memory busy percentage
-  # - key: RDC_FI_GPU_MEMORY_MAX_BANDWIDTH
+  # - metric: RDC_FI_GPU_MEMORY_MAX_BANDWIDTH
   #   prom_name: gpu_mem_max_bandwidth
   #   field: "506"
   #   scale: 1
   #   desc: The Memory max bandwidth at current memory clock in
-  # - key: RDC_FI_GPU_MEMORY_CUR_BANDWIDTH
+  # - metric: RDC_FI_GPU_MEMORY_CUR_BANDWIDTH
   #   prom_name: gpu_mem_cur_bandwidth
   #   field: "507"
   #   scale: 1
   #   desc: The Memory current bandwidth in Mb/Second
-  # - key: RDC_FI_GPU_BUSY_PERCENT
+  # - metric: RDC_FI_GPU_BUSY_PERCENT
   #   prom_name: gpu_busy_percent
   #   field: "508"
   #   scale: 1
   #   desc: The GPU busy percentage
-  # - key: RDC_FI_GPU_PAGE_RETRIED
+  # - metric: RDC_FI_GPU_PAGE_RETRIED
   #   prom_name: gpu_page_retried
   #   field: "550"
   #   scale: 1
   #   desc: Retried page of the GPU instance
-  - key: RDC_FI_ECC_CORRECT_TOTAL
+  - metric: RDC_FI_ECC_CORRECT_TOTAL
     prom_name: ecc_correct
     field: "600"
     scale: 1
     desc: Accumulated correctable ECC errors
-  - key: RDC_FI_ECC_UNCORRECT_TOTAL
+  - metric: RDC_FI_ECC_UNCORRECT_TOTAL
     prom_name: ecc_uncorrect
     field: "601"
     scale: 1
     desc: Accumulated uncorrectable ECC errors
-  # - key: RDC_FI_ECC_FIRST
+  # - metric: RDC_FI_ECC_FIRST
   #   prom_name: ecc_sdma_ce
   #   field: "602"
   #   scale: 1
   #   desc: FIRST Error Correction and Detection field
-  # - key: RDC_FI_ECC_SDMA_CE
+  # - metric: RDC_FI_ECC_SDMA_CE
   #   prom_name: ecc_sdma_ce
   #   field: "602"
   #   scale: 1
   #   desc: FIRST Error Correction and Detection field
-  # - key: RDC_FI_ECC_SDMA_UE
+  # - metric: RDC_FI_ECC_SDMA_UE
   #   prom_name: ecc_sdma_ue
   #   field: "603"
   #   scale: 1
-  # - key: RDC_FI_ECC_GFX_CE
+  # - metric: RDC_FI_ECC_GFX_CE
   #   prom_name: ecc_gfx_ce
   #   field: "604"
   #   scale: 1
-  # - key: RDC_FI_ECC_GFX_UE
+  # - metric: RDC_FI_ECC_GFX_UE
   #   prom_name: ecc_gfx_ue
   #   field: "605"
   #   scale: 1
-  # - key: RDC_FI_ECC_MMHUB_CE
+  # - metric: RDC_FI_ECC_MMHUB_CE
   #   prom_name: ecc_mmhub_ce
   #   field: "606"
   #   scale: 1
-  # - key: RDC_FI_ECC_MMHUB_UE
+  # - metric: RDC_FI_ECC_MMHUB_UE
   #   prom_name: ecc_mmhub_ue
   #   field: "607"
   #   scale: 1
-  # - key: RDC_FI_ECC_ATHUB_CE
+  # - metric: RDC_FI_ECC_ATHUB_CE
   #   prom_name: ecc_athub_ce
   #   field: "608"
   #   scale: 1
-  # - key: RDC_FI_ECC_ATHUB_UE
+  # - metric: RDC_FI_ECC_ATHUB_UE
   #   prom_name: ecc_athub_ue
   #   field: "609"
   #   scale: 1
-  # - key: RDC_FI_ECC_PCIE_BIF_CE
+  # - metric: RDC_FI_ECC_PCIE_BIF_CE
   #   prom_name: ecc_pcie_bif_ce
   #   field: "610"
   #   scale: 1
-  # - key: RDC_FI_ECC_PCIE_BIF_UE
+  # - metric: RDC_FI_ECC_PCIE_BIF_UE
   #   prom_name: ecc_pcie_bif_ue
   #   field: "611"
   #   scale: 1
-  # - key: RDC_FI_ECC_HDP_CE
+  # - metric: RDC_FI_ECC_HDP_CE
   #   prom_name: ecc_hdp_ce
   #   field: "612"
   #   scale: 1
-  # - key: RDC_FI_ECC_HDP_UE
+  # - metric: RDC_FI_ECC_HDP_UE
   #   prom_name: ecc_hdp_ue
   #   field: "613"
   #   scale: 1
-  # - key: RDC_FI_ECC_XGMI_WAFL_CE
+  # - metric: RDC_FI_ECC_XGMI_WAFL_CE
   #   prom_name: ecc_xgmi_wafl_ce
   #   field: "614"
   #   scale: 1
-  # - key: RDC_FI_ECC_XGMI_WAFL_UE
+  # - metric: RDC_FI_ECC_XGMI_WAFL_UE
   #   prom_name: ecc_xgmi_wafl_ue
   #   field: "615"
   #   scale: 1
-  # - key: RDC_FI_ECC_DF_CE
+  # - metric: RDC_FI_ECC_DF_CE
   #   prom_name: ecc_df_ce
   #   field: "616"
   #   scale: 1
-  # - key: RDC_FI_ECC_DF_UE
+  # - metric: RDC_FI_ECC_DF_UE
   #   prom_name: ecc_df_ue
   #   field: "617"
   #   scale: 1
-  # - key: RDC_FI_ECC_SMN_CE
+  # - metric: RDC_FI_ECC_SMN_CE
   #   prom_name: ecc_smn_ce
   #   field: "618"
   #   scale: 1
-  # - key: RDC_FI_ECC_SMN_UE
+  # - metric: RDC_FI_ECC_SMN_UE
   #   prom_name: ecc_smn_ue
   #   field: "619"
   #   scale: 1
-  # - key: RDC_FI_ECC_SEM_CE
+  # - metric: RDC_FI_ECC_SEM_CE
   #   prom_name: ecc_sem_ce
   #   field: "620"
   #   scale: 1
-  # - key: RDC_FI_ECC_SEM_UE
+  # - metric: RDC_FI_ECC_SEM_UE
   #   prom_name: ecc_sem_ue
   #   field: "621"
   #   scale: 1
-  # - key: RDC_FI_ECC_MP0_CE
+  # - metric: RDC_FI_ECC_MP0_CE
   #   prom_name: ecc_mp0_ce
   #   field: "622"
   #   scale: 1
-  # - key: RDC_FI_ECC_MP0_UE
+  # - metric: RDC_FI_ECC_MP0_UE
   #   prom_name: ecc_mp0_ue
   #   field: "623"
   #   scale: 1
-  # - key: RDC_FI_ECC_MP1_CE
+  # - metric: RDC_FI_ECC_MP1_CE
   #   prom_name: ecc_mp1_ce
   #   field: "624"
   #   scale: 1
-  # - key: RDC_FI_ECC_MP1_UE
+  # - metric: RDC_FI_ECC_MP1_UE
   #   prom_name: ecc_mp1_ue
   #   field: "625"
   #   scale: 1
-  # - key: RDC_FI_ECC_FUSE_CE
+  # - metric: RDC_FI_ECC_FUSE_CE
   #   prom_name: ecc_fuse_ce
   #   field: "626"
   #   scale: 1
-  # - key: RDC_FI_ECC_FUSE_UE
+  # - metric: RDC_FI_ECC_FUSE_UE
   #   prom_name: ecc_fuse_ue
   #   field: "627"
   #   scale: 1
-  # - key: RDC_FI_ECC_UMC_CE
+  # - metric: RDC_FI_ECC_UMC_CE
   #   prom_name: ecc_umc_ce
   #   field: "628"
   #   scale: 1
-  # - key: RDC_FI_ECC_UMC_UE
+  # - metric: RDC_FI_ECC_UMC_UE
   #   prom_name: ecc_umc_ue
   #   field: "629"
   #   scale: 1
-  # - key: RDC_FI_ECC_MCA_CE
+  # - metric: RDC_FI_ECC_MCA_CE
   #   prom_name: ecc_mca_ce
   #   field: "630"
   #   scale: 1
-  # - key: RDC_FI_ECC_MCA_UE
+  # - metric: RDC_FI_ECC_MCA_UE
   #   prom_name: ecc_mca_ue
   #   field: "631"
   #   scale: 1
-  # - key: RDC_FI_ECC_VCN_CE
+  # - metric: RDC_FI_ECC_VCN_CE
   #   prom_name: ecc_vcn_ce
   #   field: "632"
   #   scale: 1
-  # - key: RDC_FI_ECC_VCN_UE
+  # - metric: RDC_FI_ECC_VCN_UE
   #   prom_name: ecc_vcn_ue
   #   field: "633"
   #   scale: 1
-  # - key: RDC_FI_ECC_JPEG_CE
+  # - metric: RDC_FI_ECC_JPEG_CE
   #   prom_name: ecc_jpeg_ce
   #   field: "634"
   #   scale: 1
-  # - key: RDC_FI_ECC_JPEG_UE
+  # - metric: RDC_FI_ECC_JPEG_UE
   #   prom_name: ecc_jpeg_ue
   #   field: "635"
   #   scale: 1
-  # - key: RDC_FI_ECC_IH_CE
+  # - metric: RDC_FI_ECC_IH_CE
   #   prom_name: ecc_ih_ce
   #   field: "636"
   #   scale: 1
-  # - key: RDC_FI_ECC_IH_UE
+  # - metric: RDC_FI_ECC_IH_UE
   #   prom_name: ecc_ih_ue
   #   field: "637"
   #   scale: 1
-  # - key: RDC_FI_ECC_MPIO_CE
+  # - metric: RDC_FI_ECC_MPIO_CE
   #   prom_name: ecc_mpio_ce
   #   field: "638"
   #   scale: 1
-  # - key: RDC_FI_ECC_MPIO_UE
+  # - metric: RDC_FI_ECC_MPIO_UE
   #   prom_name: ecc_mpio_ue
   #   field: "639"
   #   scale: 1
-  # - key: RDC_FI_ECC_LAST
+  # - metric: RDC_FI_ECC_LAST
   #   prom_name: ecc_mpio_ue
   #   field: "639"
   #   scale: 1
-  # - key: RDC_FI_XGMI_0_READ_KB
+  # - metric: RDC_FI_XGMI_0_READ_KB
   #   prom_name: xgmi_0_read
   #   field: "700"
   #   scale: 1
   #   desc: XGMI_0 accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_1_READ_KB
+  # - metric: RDC_FI_XGMI_1_READ_KB
   #   prom_name: xgmi_1_read
   #   field: "701"
   #   scale: 1
   #   desc: XGMI_1 accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_2_READ_KB
+  # - metric: RDC_FI_XGMI_2_READ_KB
   #   prom_name: xgmi_2_read
   #   field: "702"
   #   scale: 1
   #   desc: XGMI_2 accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_3_READ_KB
+  # - metric: RDC_FI_XGMI_3_READ_KB
   #   prom_name: xgmi_3_read
   #   field: "703"
   #   scale: 1
   #   desc: XGMI_3 accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_4_READ_KB
+  # - metric: RDC_FI_XGMI_4_READ_KB
   #   prom_name: xgmi_4_read
   #   field: "704"
   #   scale: 1
   #   desc: XGMI_4 accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_5_READ_KB
+  # - metric: RDC_FI_XGMI_5_READ_KB
   #   prom_name: xgmi_5_read
   #   field: "705"
   #   scale: 1
   #   desc: XGMI_5 accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_6_READ_KB
+  # - metric: RDC_FI_XGMI_6_READ_KB
   #   prom_name: xgmi_6_read
   #   field: "706"
   #   scale: 1
   #   desc: XGMI_6 accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_7_READ_KB
+  # - metric: RDC_FI_XGMI_7_READ_KB
   #   prom_name: xgmi_7_read
   #   field: "707"
   #   scale: 1
   #   desc: XGMI_7 accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_0_WRITE_KB
+  # - metric: RDC_FI_XGMI_0_WRITE_KB
   #   prom_name: xgmi_0_write
   #   field: "708"
   #   scale: 1
   #   desc: XGMI_0 accumulated data write size (KB)
-  # - key: RDC_FI_XGMI_1_WRITE_KB
+  # - metric: RDC_FI_XGMI_1_WRITE_KB
   #   prom_name: xgmi_1_write
   #   field: "709"
   #   scale: 1
   #   desc: XGMI_1 accumulated data write size (KB)
-  # - key: RDC_FI_XGMI_2_WRITE_KB
+  # - metric: RDC_FI_XGMI_2_WRITE_KB
   #   prom_name: xgmi_2_write
   #   field: "710"
   #   scale: 1
   #   desc: XGMI_2 accumulated data write size (KB)
-  # - key: RDC_FI_XGMI_3_WRITE_KB
+  # - metric: RDC_FI_XGMI_3_WRITE_KB
   #   prom_name: xgmi_3_write
   #   field: "711"
   #   scale: 1
   #   desc: XGMI_3 accumulated data write size (KB)
-  # - key: RDC_FI_XGMI_4_WRITE_KB
+  # - metric: RDC_FI_XGMI_4_WRITE_KB
   #   prom_name: xgmi_4_write
   #   field: "712"
   #   scale: 1
   #   desc: XGMI_4 accumulated data write size (KB)
-  # - key: RDC_FI_XGMI_5_WRITE_KB
+  # - metric: RDC_FI_XGMI_5_WRITE_KB
   #   prom_name: xgmi_5_write
   #   field: "713"
   #   scale: 1
   #   desc: XGMI_5 accumulated data write size (KB)
-  # - key: RDC_FI_XGMI_6_WRITE_KB
+  # - metric: RDC_FI_XGMI_6_WRITE_KB
   #   prom_name: xgmi_6_write
   #   field: "714"
   #   scale: 1
   #   desc: XGMI_6 accumulated data write size (KB)
-  # - key: RDC_FI_XGMI_7_WRITE_KB
+  # - metric: RDC_FI_XGMI_7_WRITE_KB
   #   prom_name: xgmi_7_write
   #   field: "715"
   #   scale: 1
   #   desc: XGMI_7 accumulated data write size (KB)
-  # - key: RDC_FI_XGMI_TOTAL_READ_KB
+  # - metric: RDC_FI_XGMI_TOTAL_READ_KB
   #   prom_name: xgmi_total_read
   #   field: "716"
   #   scale: 1
   #   desc: XGMI_SUM accumulated data read size (KB)
-  # - key: RDC_FI_XGMI_TOTAL_WRITE_KB
+  # - metric: RDC_FI_XGMI_TOTAL_WRITE_KB
   #   prom_name: xgmi_total_write
   #   field: "717"
   #   scale: 1
   #   desc: XGMI_SUM accumulated data write size (KB)
-  - key: RDC_FI_PROF_OCCUPANCY_PERCENT
+  - metric: RDC_FI_PROF_OCCUPANCY_PERCENT
     prom_name: occupancy_percent
     field: "800"
     scale: 1
-  - key: RDC_FI_PROF_ACTIVE_CYCLES
+  - metric: RDC_FI_PROF_ACTIVE_CYCLES
     prom_name: active_cycles
     field: "801"
     scale: 1
-  - key: RDC_FI_PROF_ACTIVE_WAVES
+  - metric: RDC_FI_PROF_ACTIVE_WAVES
     prom_name: active_waves
     field: "802"
     scale: 1
-  - key: RDC_FI_PROF_ELAPSED_CYCLES
+  - metric: RDC_FI_PROF_ELAPSED_CYCLES
     prom_name: elapsed_cycles
     field: "803"
     scale: 1
-  - key: RDC_FI_PROF_TENSOR_ACTIVE_PERCENT
+  - metric: RDC_FI_PROF_TENSOR_ACTIVE_PERCENT
     prom_name: tensor_percent
     field: "804"
     scale: 1
-  - key: RDC_FI_PROF_GPU_UTIL_PERCENT
+  - metric: RDC_FI_PROF_GPU_UTIL_PERCENT
     prom_name: gpu_util_percent
     field: "805"
     scale: 1
-  - key: RDC_FI_PROF_EVAL_MEM_R_BW
+  - metric: RDC_FI_PROF_EVAL_MEM_R_BW
     prom_name: mem_r_bw
     field: "806"
     scale: 1
-  - key: RDC_FI_PROF_EVAL_MEM_W_BW
+  - metric: RDC_FI_PROF_EVAL_MEM_W_BW
     prom_name: mem_w_bw
     field: "807"
     scale: 1
-  - key: RDC_FI_PROF_EVAL_FLOPS_16
+  - metric: RDC_FI_PROF_EVAL_FLOPS_16
     prom_name: flops_16
     field: "808"
     scale: 1
-  - key: RDC_FI_PROF_EVAL_FLOPS_32
+  - metric: RDC_FI_PROF_EVAL_FLOPS_32
     prom_name: flops_32
     field: "809"
     scale: 1
-  - key: RDC_FI_PROF_EVAL_FLOPS_64
+  - metric: RDC_FI_PROF_EVAL_FLOPS_64
     prom_name: flops_64
     field: "810"
     scale: 1
-  - key: RDC_FI_PROF_VALU_PIPE_ISSUE_UTIL
+  - metric: RDC_FI_PROF_VALU_PIPE_ISSUE_UTIL
     prom_name: valu_utilization
     field: "811"
     scale: 1
-  - key: RDC_FI_PROF_SM_ACTIVE
+  - metric: RDC_FI_PROF_SM_ACTIVE
     prom_name: valubusy
     field: "812"
     scale: 1
-  - key: RDC_FI_PROF_OCC_PER_ACTIVE_CU
+  - metric: RDC_FI_PROF_OCC_PER_ACTIVE_CU
     prom_name: occ_cu
     field: "813"
     scale: 1
-  - key: RDC_FI_PROF_OCC_ELAPSED
+  - metric: RDC_FI_PROF_OCC_ELAPSED
     prom_name: occ_cu_elapsed
     field: "814"
     scale: 1
-  - key: RDC_FI_PROF_EVAL_FLOPS_16_PERCENT
+  - metric: RDC_FI_PROF_EVAL_FLOPS_16_PERCENT
     prom_name: flops_16_percent
     field: "815"
     scale: 1
-  - key: RDC_FI_PROF_EVAL_FLOPS_32_PERCENT
+  - metric: RDC_FI_PROF_EVAL_FLOPS_32_PERCENT
     prom_name: flops_32_percent
     field: "816"
     scale: 1
-  - key: RDC_FI_PROF_EVAL_FLOPS_64_PERCENT
+  - metric: RDC_FI_PROF_EVAL_FLOPS_64_PERCENT
     prom_name: flops_64_percent
     field: "817"
     scale: 1
-  # - key: RDC_FI_PROF_SIMD_UTILIZATION
+  # - metric: RDC_FI_PROF_SIMD_UTILIZATION
   #   prom_name: simd_utilization
   #   field: "853"
   #   scale: 1
-  # - key: RDC_EVNT_XGMI_0_NOP_TX
+  # - metric: RDC_EVNT_XGMI_0_NOP_TX
   #   prom_name: xgmi_nop_0
   #   field: "1000"
   #   scale: 1
   #   desc: NOPs sent to neighbor 0
-  # - key: RDC_EVNT_XGMI_0_REQ_TX
+  # - metric: RDC_EVNT_XGMI_0_REQ_TX
   #   prom_name: xgmi_req_0
   #   field: "1001"
   #   scale: 1
   #   desc: Outgoing requests to
-  # - key: RDC_EVNT_XGMI_0_RESP_TX
+  # - metric: RDC_EVNT_XGMI_0_RESP_TX
   #   prom_name: xgmi_res_0
   #   field: "1002"
   #   scale: 1
   #   desc: Outgoing responses to
-  # - key: RDC_EVNT_XGMI_0_BEATS_TX
+  # - metric: RDC_EVNT_XGMI_0_BEATS_TX
   #   prom_name: xgmi_bts_0
   #   field: "1003"
   #   scale: 1
-  # - key: RDC_EVNT_XGMI_1_NOP_TX
+  # - metric: RDC_EVNT_XGMI_1_NOP_TX
   #   prom_name: xgmi_nop_1
   #   field: "1004"
   #   scale: 1
   #   desc: NOPs sent to neighbor 1
-  # - key: RDC_EVNT_XGMI_1_REQ_TX
+  # - metric: RDC_EVNT_XGMI_1_REQ_TX
   #   prom_name: xgmi_req_1
   #   field: "1005"
   #   scale: 1
   #   desc: Outgoing requests to
-  # - key: RDC_EVNT_XGMI_1_RESP_TX
+  # - metric: RDC_EVNT_XGMI_1_RESP_TX
   #   prom_name: xgmi_res_1
   #   field: "1006"
   #   scale: 1
   #   desc: Outgoing responses to
-  # - key: RDC_EVNT_XGMI_1_BEATS_TX
+  # - metric: RDC_EVNT_XGMI_1_BEATS_TX
   #   prom_name: xgmi_bts_1
   #   field: "1007"
   #   scale: 1
   #   desc: Data beats sent to
-  # - key: RDC_EVNT_XGMI_0_THRPUT
+  # - metric: RDC_EVNT_XGMI_0_THRPUT
   #   prom_name: xgmi_0_t
   #   field: "1500"
   #   scale: 1
   #   desc: Transmit throughput to XGMI
-  # - key: RDC_EVNT_XGMI_1_THRPUT
+  # - metric: RDC_EVNT_XGMI_1_THRPUT
   #   prom_name: xgmi_1_t
   #   field: "1501"
   #   scale: 1
   #   desc: Transmit throughput to XGMI
-  # - key: RDC_EVNT_XGMI_2_THRPUT
+  # - metric: RDC_EVNT_XGMI_2_THRPUT
   #   prom_name: xgmi_2_t
   #   field: "1502"
   #   scale: 1
   #   desc: Transmit throughput to XGMI
-  # - key: RDC_EVNT_XGMI_3_THRPUT
+  # - metric: RDC_EVNT_XGMI_3_THRPUT
   #   prom_name: xgmi_3_t
   #   field: "1503"
   #   scale: 1
   #   desc: Transmit throughput to XGMI
-  # - key: RDC_EVNT_XGMI_4_THRPUT
+  # - metric: RDC_EVNT_XGMI_4_THRPUT
   #   prom_name: xgmi_4_t
   #   field: "1504"
   #   scale: 1
   #   desc: Transmit throughput to XGMI
-  # - key: RDC_EVNT_XGMI_5_THRPUT
+  # - metric: RDC_EVNT_XGMI_5_THRPUT
   #   prom_name: xgmi_5_t
   #   field: "1505"
   #   scale: 1
   #   desc: Transmit throughput to XGMI
-  # - key: RDC_EVNT_NOTIF_VMFAULT
+  # - metric: RDC_EVNT_NOTIF_VMFAULT
   #   prom_name: vm_page_fault
   #   field: "2000"
   #   scale: 1
   #   desc: VM page fault
-  # - key: RDC_EVNT_NOTIF_FIRST
+  # - metric: RDC_EVNT_NOTIF_FIRST
   #   prom_name: vm_page_fault
   #   field: "2000"
   #   scale: 1
   #   desc: VM page fault
-  # - key: RDC_EVNT_NOTIF_THERMAL_THROTTLE
+  # - metric: RDC_EVNT_NOTIF_THERMAL_THROTTLE
   #   prom_name: thermal_throt
   #   field: "2001"
   #   scale: 1
   #   desc: Clock frequency has decreased
-  # - key: RDC_EVNT_NOTIF_PRE_RESET
+  # - metric: RDC_EVNT_NOTIF_PRE_RESET
   #   prom_name: gpu_pre_reset
   #   field: "2002"
   #   scale: 1
   #   desc: GPU reset is about to occur
-  # - key: RDC_EVNT_NOTIF_POST_RESET
+  # - metric: RDC_EVNT_NOTIF_POST_RESET
   #   prom_name: gpu_post_reset
   #   field: "2003"
   #   scale: 1
   #   desc: GPU reset just occurred
-  # - key: RDC_EVNT_NOTIF_RING_HANG
+  # - metric: RDC_EVNT_NOTIF_RING_HANG
   #   prom_name: ring_hang
   #   field: "2004"
   #   scale: 1
   #   desc: GPU ring hang just occurred
-  # - key: RDC_EVNT_NOTIF_LAST
+  # - metric: RDC_EVNT_NOTIF_LAST
   #   prom_name: ring_hang
   #   field: "2004"
   #   scale: 1
   #   desc: GPU ring hang just occurred
-  # - key: RDC_HEALTH_XGMI_ERROR
+  # - metric: RDC_HEALTH_XGMI_ERROR
   #   prom_name: xgmi_error
   #   field: "3000"
   #   scale: 1
   #   desc: XGMI one or more errors detected
-  # - key: RDC_HEALTH_PCIE_REPLAY_COUNT
+  # - metric: RDC_HEALTH_PCIE_REPLAY_COUNT
   #   prom_name: pcie_replay_count
   #   field: "3001"
   #   scale: 1
   #   desc: Total PCIE replay count
-  - key: RDC_HEALTH_RETIRED_PAGE_NUM
+  - metric: RDC_HEALTH_RETIRED_PAGE_NUM
     prom_name: retired_page_num
     field: "3002"
     scale: 1
     desc: Retired page number
-  # - key: RDC_HEALTH_PENDING_PAGE_NUM
+  # - metric: RDC_HEALTH_PENDING_PAGE_NUM
   #   prom_name: pending_page_num
   #   field: "3003"
   #   scale: 1
   #   desc: Pending page number
-  # - key: RDC_HEALTH_RETIRED_PAGE_LIMIT
+  # - metric: RDC_HEALTH_RETIRED_PAGE_LIMIT
   #   prom_name: retired_page_limit
   #   field: "3004"
   #   scale: 1
   #   desc: the threshold of retired page number
-  # - key: RDC_HEALTH_EEPROM_CONFIG_VALID
+  # - metric: RDC_HEALTH_EEPROM_CONFIG_VALID
   #   prom_name: eeprom_config_valid
   #   field: "3005"
   #   scale: 1
   #   desc: Reads the EEPROM and verifies the checksums
-  # - key: RDC_HEALTH_POWER_THROTTLE_TIME
+  # - metric: RDC_HEALTH_POWER_THROTTLE_TIME
   #   prom_name: power_throttle_time
   #   field: "3006"
   #   scale: 1
   #   desc: Power throttle status counter
-  # - key: RDC_HEALTH_THERMAL_THROTTLE_TIME
+  # - metric: RDC_HEALTH_THERMAL_THROTTLE_TIME
   #   prom_name: thermal_throttle_time
   #   field: "3007"
   #   scale: 1

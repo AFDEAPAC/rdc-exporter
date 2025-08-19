@@ -93,7 +93,7 @@ func main() {
 		if m == nil {
 			continue
 		}
-		key := m[1]
+		metric := m[1]
 		valStr := m[3]
 
 		var val int
@@ -108,7 +108,7 @@ func main() {
 			// Enum name with reference to another enum
 			ref, ok := entries[valStr]
 			if !ok {
-				fmt.Fprintf(os.Stderr, "Reference key %s not found for %s\n", valStr, key)
+				fmt.Fprintf(os.Stderr, "Reference metric %s not found for %s\n", valStr, metric)
 				continue
 			}
 			val, _ = strconv.Atoi(ref.Field)
@@ -121,26 +121,26 @@ func main() {
 		lastVal = val
 
 		entry := &catalog.Entity{
-			Key:      key,
+			Metric:   metric,
 			PromName: toPromName(val),
 			Field:    strconv.Itoa(val),
 			Scale:    1,
 			Desc:     right,
 		}
-		entries[key] = entry
+		entries[metric] = entry
 	}
 
 	// Convert entries map to slice
 	out := &catalog.Catalog{
-		Metrics: make([]*catalog.Entity, 0, len(entries)),
+		Entities: make([]*catalog.Entity, 0, len(entries)),
 	}
 	for _, entry := range entries {
-		out.Metrics = append(out.Metrics, entry)
+		out.Entities = append(out.Entities, entry)
 	}
 
-	sort.SliceStable(out.Metrics, func(i, j int) bool {
-		f1, _ := strconv.Atoi(out.Metrics[i].Field)
-		f2, _ := strconv.Atoi(out.Metrics[j].Field)
+	sort.SliceStable(out.Entities, func(i, j int) bool {
+		f1, _ := strconv.Atoi(out.Entities[i].Field)
+		f2, _ := strconv.Atoi(out.Entities[j].Field)
 		return f1 < f2
 	})
 

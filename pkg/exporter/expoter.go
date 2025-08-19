@@ -21,7 +21,7 @@ func NewExporter(reg *prometheus.Registry, catalg *catalog.Catalog) (*Exporter, 
 	)
 
 	// Initialize the RDC scraper
-	rdcScraper, err := rdc.NewRdcScraper(rdcGpuGroupName, rdcFieldGroupName, catalg.Metrics, reg)
+	rdcScraper, err := rdc.NewRdcScraper(rdcGpuGroupName, rdcFieldGroupName, catalg.Entities, reg)
 	if err != nil {
 		slog.Error("Failed to create RDC scraper", "error", err)
 		return nil, err
