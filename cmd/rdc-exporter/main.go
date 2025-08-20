@@ -12,6 +12,8 @@ import (
 
 	"github.com/ROCm/rdc-exporter/pkg/catalog"
 	"github.com/ROCm/rdc-exporter/pkg/exporter"
+	"github.com/ROCm/rdc-exporter/pkg/labeler"
+	"github.com/ROCm/rdc-exporter/pkg/labeler/k8s"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -27,6 +29,7 @@ func main() {
 		fields         []string
 		fieldsFilePath string
 		gpuIndexes     []int
+		kubeletPath    string
 		selfMonitoring bool
 	)
 
@@ -37,6 +40,7 @@ func main() {
 	pflag.StringSliceVarP(&fields, "fields", "e", nil, "Fields to scrape (e.g., 100,812)")
 	pflag.StringVarP(&fieldsFilePath, "fields-file", "f", "", "Path to a file containing fields to scrape (one per line)")
 	pflag.IntSliceVarP(&gpuIndexes, "gpu-indexes", "i", nil, "GPU indexes to scrape (e.g., 0,1,2)")
+	pflag.StringVarP(&kubeletPath, "kubelet", "k", "", "Path to the kubelet socket (e.g., /var/lib/kubelet/pod-resources/kubelet.sock)")
 	pflag.BoolVar(&selfMonitoring, "self-monitoring", false, "Enable self-monitoring metrics")
 	pflag.Parse()
 
@@ -91,7 +95,16 @@ func main() {
 		reg.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	}
 
-	exp, err := exporter.NewExporter(reg, catalg, gpuIndexes)
+	var lb labeler.Labeler
+	if kubeletPath != "" {
+		lb, err = k8s.NewK8sLabeler(kubeletPath)
+		if err != nil {
+			slog.Error("Failed to create K8s labeler", "error", err)
+			return
+		}
+	}
+
+	exp, err := exporter.NewExporter(reg, catalg, gpuIndexes, lb)
 	if err != nil {
 		slog.Error("Failed to create exporter: %v", err)
 		return

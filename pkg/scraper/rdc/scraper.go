@@ -10,28 +10,26 @@ import (
 
 	"github.com/ROCm/rdc-exporter/internal/bindings/rdc"
 	"github.com/ROCm/rdc-exporter/pkg/catalog"
+	"github.com/ROCm/rdc-exporter/pkg/labeler"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type RdcScraper struct {
-	handler        *rdc.Handler
-	fieldGroupID   uint32
-	fieldGroupName string
-	fieldIDs       []rdc.FieldID
-	gpuGroupID     uint32
-	gpuGroupName   string
-	gpuIndexs      []uint32
-
+	handler   *rdc.Handler
+	config    *RdcScraperConfig
 	entities  []*catalog.Entity
 	gaugeVecs map[rdc.FieldID]*prometheus.GaugeVec
+	labels    map[rdc.FieldID]map[uint32][]string
 
-	maxiumKeepAge     float32
-	maxiumKeepSamples int32
-	updateFrequencey  int64
+	// Data from RDC
+	fieldGroupID uint32
+	fieldIDs     []rdc.FieldID
+	gpuGroupID   uint32
+	gpuIndexs    []uint32
 }
 
-func NewRdcScraper(gpuGroupName string, fieldGroupName string, entities []*catalog.Entity, reg *prometheus.Registry, gpuIndexes []int) (*RdcScraper, error) {
-	slog.Info("Initializing RDC scraper", "gpuGroupName", gpuGroupName)
+func NewRdcScraper(config *RdcScraperConfig, gpuIndexes []int, entities []*catalog.Entity) (*RdcScraper, error) {
+	slog.Info("Initializing RDC scraper", "gpuGroupName", config.GpuGroupName)
 
 	slog.Debug("Initializing RDC")
 	if err := rdc.Init(0); err != nil {
@@ -85,16 +83,12 @@ func NewRdcScraper(gpuGroupName string, fieldGroupName string, entities []*catal
 	}
 
 	scraper := &RdcScraper{
-		handler:           handler,
-		fieldGroupName:    fieldGroupName,
-		fieldIDs:          make([]rdc.FieldID, len(entities)),
-		entities:          entities,
-		gaugeVecs:         make(map[rdc.FieldID]*prometheus.GaugeVec),
-		gpuGroupName:      gpuGroupName,
-		gpuIndexs:         hostGpuIndexs,
-		maxiumKeepAge:     3600.0,
-		maxiumKeepSamples: 1000,
-		updateFrequencey:  10000000,
+		handler:   handler,
+		config:    config,
+		fieldIDs:  make([]rdc.FieldID, len(entities)),
+		entities:  entities,
+		gaugeVecs: make(map[rdc.FieldID]*prometheus.GaugeVec),
+		gpuIndexs: hostGpuIndexs,
 	}
 
 	for i, entity := range entities {
@@ -121,11 +115,6 @@ func NewRdcScraper(gpuGroupName string, fieldGroupName string, entities []*catal
 	// Start watching fields
 	if err := scraper.WatchFields(); err != nil {
 		slog.Error("Failed to watch fields", "err", err)
-		return nil, err
-	}
-
-	if err := scraper.CreateGaugeVecs(reg); err != nil {
-		slog.Error("Failed to create GaugeVecs", "err", err)
 		return nil, err
 	}
 
@@ -162,72 +151,38 @@ func (r *RdcScraper) CreateFieldGroup() error {
 			continue
 		}
 
-		if group.Name() == r.fieldGroupName {
+		if group.Name() == r.config.FieldGroupName {
 			fieldIDs := group.ValidFieldIDs()
 			if reflect.DeepEqual(fieldIDs, r.fieldIDs) {
-				slog.Debug("Field group already exists", "name", r.fieldGroupName, "fieldIDs", fieldIDs)
+				slog.Debug("Field group already exists", "name", r.config.FieldGroupName, "fieldIDs", fieldIDs)
 				r.fieldGroupID = group.GroupID
 				return nil
 			}
-			slog.Warn("Field group already exists with different field IDs", "name", r.fieldGroupName, "existingFieldIDs", fieldIDs, "newFieldIDs", r.fieldIDs)
+			slog.Warn("Field group already exists with different field IDs", "name", r.config.FieldGroupName, "existingFieldIDs", fieldIDs, "newFieldIDs", r.fieldIDs)
 			if err := r.handler.DestroyFieldGroup(group.GroupID); err != nil {
-				slog.Error("Failed to destroy existing field group", "name", r.fieldGroupName, "err", err)
+				slog.Error("Failed to destroy existing field group", "name", r.config.FieldGroupName, "err", err)
 				return err
 			}
-			slog.Debug("Destroyed existing field group", "name", r.fieldGroupName)
+			slog.Debug("Destroyed existing field group", "name", r.config.FieldGroupName)
 			break
 		}
 	}
 
-	slog.Debug("Creating field group", "name", r.fieldGroupName)
-	groupID, err := r.handler.CreateFieldGroup(r.fieldIDs, r.fieldGroupName)
+	slog.Debug("Creating field group", "name", r.config.FieldGroupName)
+	groupID, err := r.handler.CreateFieldGroup(r.fieldIDs, r.config.FieldGroupName)
 	if err != nil {
-		slog.Error("Failed to create field group", "name", r.fieldGroupName, "err", err)
+		slog.Error("Failed to create field group", "name", r.config.FieldGroupName, "err", err)
 		return err
 	}
 
 	r.fieldGroupID = groupID
-	slog.Debug("Field group created successfully", "groupID", groupID, "name", r.fieldGroupName)
-	return nil
-}
-
-func (r *RdcScraper) CreateGaugeVecs(reg *prometheus.Registry) error {
-	slog.Debug("Creating GaugeVecs for field IDs", "fieldIDs", r.fieldIDs)
-
-	for i, fieldID := range r.fieldIDs {
-		if _, exists := r.gaugeVecs[fieldID]; exists {
-			slog.Debug("GaugeVec already exists", "fieldID", fieldID)
-			continue
-		}
-
-		entity := r.entities[i]
-		opt := prometheus.GaugeOpts{
-			Name: entity.PromName,
-			Help: entity.Desc,
-		}
-
-		if opt.Name == "" {
-			name := fieldID.Name()
-			opt.Name = strings.ToLower(name)
-		}
-
-		if opt.Help == "" {
-			opt.Help = "RDC field value for " + opt.Name
-		}
-
-		gv := prometheus.NewGaugeVec(opt, []string{"gpu_index"})
-		reg.MustRegister(gv)
-		r.gaugeVecs[fieldID] = gv
-		slog.Debug("Created GaugeVec", "fieldID", fieldID, "name", opt.Name)
-	}
-
-	slog.Debug("All GaugeVecs created successfully", "count", len(r.gaugeVecs))
+	slog.Debug("Field group created successfully", "groupID", groupID, "name", r.config.FieldGroupName)
 	return nil
 }
 
 func (r *RdcScraper) CreateGpuGroup() error {
 
-	if r.gpuGroupName == "" {
+	if r.config.GpuGroupName == "" {
 		slog.Error("GPU group name is empty")
 		return nil
 	}
@@ -239,28 +194,28 @@ func (r *RdcScraper) CreateGpuGroup() error {
 	}
 
 	for _, group := range groups {
-		if group.Name() == r.gpuGroupName {
+		if group.Name() == r.config.GpuGroupName {
 			entityIDs := group.ValidEntityIDs()
 			if reflect.DeepEqual(entityIDs, r.gpuIndexs) {
-				slog.Debug("GPU group already exists", "name", r.gpuGroupName, "entityIDs", entityIDs)
+				slog.Debug("GPU group already exists", "name", r.config.GpuGroupName, "entityIDs", entityIDs)
 				r.gpuGroupID = group.GroupID
 				return nil
 			}
-			slog.Warn("GPU group already exists with different entity IDs", "name", r.gpuGroupName, "existingEntityIDs", entityIDs, "newEntityIDs", r.gpuIndexs)
+			slog.Warn("GPU group already exists with different entity IDs", "name", r.config.GpuGroupName, "existingEntityIDs", entityIDs, "newEntityIDs", r.gpuIndexs)
 			err = r.handler.DestroyGpuGroup(group.GroupID)
 			if err != nil {
-				slog.Error("Failed to destroy existing GPU group", "name", r.gpuGroupName, "err", err)
+				slog.Error("Failed to destroy existing GPU group", "name", r.config.GpuGroupName, "err", err)
 				return err
 			}
-			slog.Debug("Destroyed existing GPU group", "name", r.gpuGroupName)
+			slog.Debug("Destroyed existing GPU group", "name", r.config.GpuGroupName)
 			break
 		}
 	}
 
-	slog.Debug("Creating GPU group", "name", r.gpuGroupName)
-	groupID, err := r.handler.CreateGpuGroup(r.gpuGroupName)
+	slog.Debug("Creating GPU group", "name", r.config.GpuGroupName)
+	groupID, err := r.handler.CreateGpuGroup(r.config.GpuGroupName)
 	if err != nil {
-		slog.Error("Failed to create GPU group", "name", r.gpuGroupName, "err", err)
+		slog.Error("Failed to create GPU group", "name", r.config.GpuGroupName, "err", err)
 		return err
 	}
 
@@ -273,7 +228,7 @@ func (r *RdcScraper) CreateGpuGroup() error {
 	}
 
 	r.gpuGroupID = groupID
-	slog.Debug("GPU group created successfully", "groupID", groupID, "name", r.gpuGroupName)
+	slog.Debug("GPU group created successfully", "groupID", groupID, "name", r.config.GpuGroupName)
 	return nil
 }
 
@@ -301,7 +256,53 @@ func (r *RdcScraper) GetAllGpuGroups() ([]*rdc.GpuGroupInfo, error) {
 	return groups, nil
 }
 
-func (r *RdcScraper) Scrape() error {
+func (r *RdcScraper) RegisterGaugeVecs(reg *prometheus.Registry, dynamicLabels []string) error {
+	slog.Debug("Creating GaugeVecs for field IDs", "fieldIDs", r.fieldIDs)
+
+	r.labels = make(map[rdc.FieldID]map[uint32][]string)
+
+	labels := []string{"gpu_index"}
+	if dynamicLabels != nil && len(dynamicLabels) > 0 {
+		labels = append(labels, dynamicLabels...)
+	}
+
+	for i, fieldID := range r.fieldIDs {
+		if _, exists := r.gaugeVecs[fieldID]; exists {
+			slog.Debug("GaugeVec already exists", "fieldID", fieldID)
+			continue
+		}
+
+		entity := r.entities[i]
+		opt := prometheus.GaugeOpts{
+			Name: entity.PromName,
+			Help: entity.Desc,
+		}
+
+		if opt.Name == "" {
+			name := fieldID.Name()
+			opt.Name = strings.ToLower(name)
+		}
+
+		if opt.Help == "" {
+			opt.Help = "RDC field value for " + opt.Name
+		}
+
+		gv := prometheus.NewGaugeVec(opt, labels)
+		reg.MustRegister(gv)
+		r.gaugeVecs[fieldID] = gv
+		slog.Debug("Created GaugeVec", "fieldID", fieldID, "name", opt.Name)
+
+		r.labels[fieldID] = make(map[uint32][]string)
+		for _, gpuIndex := range r.gpuIndexs {
+			r.labels[fieldID][gpuIndex] = labels
+		}
+	}
+
+	slog.Debug("All GaugeVecs created successfully", "count", len(r.gaugeVecs))
+	return nil
+}
+
+func (r *RdcScraper) Scrape(lb labeler.Labeler) error {
 
 	type cachedValue struct {
 		gpuIndex uint32
@@ -368,8 +369,23 @@ func (r *RdcScraper) Scrape() error {
 
 		for gpuIndex, value := range gpuValues {
 			slog.Debug("Setting GaugeVec value", "fieldID", fieldID, "gpuIndex", gpuIndex, "value", value)
-			gi := strconv.FormatUint(uint64(gpuIndex), 10)
-			gaugeVec.WithLabelValues(gi).Set(value)
+
+			labels := make([]string, 1)
+			labels[0] = strconv.FormatUint(uint64(gpuIndex), 10) // First label always is gpu_index
+
+			// Add dynamic labels if available
+			if lb != nil {
+				dynamicLabels := lb.GetLabelsByGpu(int(gpuIndex))
+				labels = append(labels, dynamicLabels...)
+
+				oldlabels, _ := r.labels[fieldID][gpuIndex]
+				if !reflect.DeepEqual(oldlabels, labels) {
+					gaugeVec.DeleteLabelValues(oldlabels...)
+				}
+			}
+
+			gaugeVec.WithLabelValues(labels...).Set(value)
+			r.labels[fieldID][gpuIndex] = labels
 		}
 	}
 
@@ -387,7 +403,7 @@ func (r *RdcScraper) WatchFields() error {
 	}
 
 	slog.Debug("Starting to watch fields", "fieldGroupID", r.fieldGroupID, "fieldIDs", r.fieldIDs)
-	err = r.handler.WatchFields(r.gpuGroupID, r.fieldGroupID, r.maxiumKeepAge, r.maxiumKeepSamples, r.updateFrequencey)
+	err = r.handler.WatchFields(r.gpuGroupID, r.fieldGroupID, r.config.MaxiumKeepAge, r.config.MaxiumKeepSamples, r.config.UpdateFrequencey)
 	if err != nil {
 		slog.Error("Failed to watch fields", "err", err)
 		return err
