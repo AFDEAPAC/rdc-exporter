@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/ROCm/rdc-exporter/pkg/catalog"
@@ -53,7 +54,14 @@ func (e *Exporter) Close() error {
 	return nil
 }
 
-func (e *Exporter) Scrape() error {
+func (e *Exporter) Scrape(ctx context.Context) error {
+	if e.lb != nil {
+		if err := e.lb.Update(ctx); err != nil {
+			slog.Error("Failed to update labels from labeler", "error", err)
+			return err
+		}
+	}
+
 	if err := e.rs.Scrape(e.lb); err != nil {
 		slog.Error("Failed to scrape RDC data", "error", err)
 		return err

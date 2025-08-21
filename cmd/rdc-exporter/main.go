@@ -102,6 +102,7 @@ func main() {
 			slog.Error("Failed to create K8s labeler", "error", err)
 			return
 		}
+		defer lb.Close()
 	}
 
 	exp, err := exporter.NewExporter(reg, catalg, gpuIndexes, lb)
@@ -118,7 +119,7 @@ func main() {
 				slog.Info("Shutting down exporter")
 				return
 			default:
-				exp.Scrape()
+				exp.Scrape(ctx)
 				time.Sleep(5 * time.Second) // Scrape every 5 seconds
 			}
 		}
