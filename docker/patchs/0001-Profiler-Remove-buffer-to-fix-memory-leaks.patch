@@ -1,0 +1,89 @@
+From dfae9cd37fd43773bf2e2a8b3afd4b2dd9e762b9 Mon Sep 17 00:00:00 2001
+From: "Galantsev, Dmitrii" <dmitrii.galantsev@amd.com>
+Date: Fri, 11 Apr 2025 03:17:06 +0000
+Subject: [PATCH] Profiler - Remove buffer to fix memory leaks
+
+Change-Id: Ia3717ccfc147221557f5469965c2abb76b3f451c
+Signed-off-by: Galantsev, Dmitrii <dmitrii.galantsev@amd.com>
+---
+ example/rocprofiler_example.cc                |  4 +---
+ .../rdc_rocp/RdcRocpCounterSampler.h          |  1 -
+ .../rdc_rocp/RdcRocpCounterSampler.cc         | 20 +------------------
+ 3 files changed, 2 insertions(+), 23 deletions(-)
+
+diff --git a/example/rocprofiler_example.cc b/example/rocprofiler_example.cc
+index 4ea0631..3f65ba5 100644
+--- a/example/rocprofiler_example.cc
++++ b/example/rocprofiler_example.cc
+@@ -22,10 +22,8 @@ THE SOFTWARE.
+ 
+ #include <unistd.h>
+ 
+-#include <cstddef>
+ #include <iomanip>
+ #include <iostream>
+-#include <string_view>
+ #include <vector>
+ 
+ #include "rdc/rdc.h"
+@@ -33,7 +31,7 @@ THE SOFTWARE.
+ rdc_handle_t rdc_handle;
+ rdc_status_t result;
+ 
+-constexpr std::string_view value_to_string(rdc_field_value value) {
++const std::string value_to_string(rdc_field_value value) {
+   switch (value.type) {
+     case INTEGER:
+       return std::to_string(value.value.l_int);
+diff --git a/include/rdc_modules/rdc_rocp/RdcRocpCounterSampler.h b/include/rdc_modules/rdc_rocp/RdcRocpCounterSampler.h
+index 7553074..357a962 100644
+--- a/include/rdc_modules/rdc_rocp/RdcRocpCounterSampler.h
++++ b/include/rdc_modules/rdc_rocp/RdcRocpCounterSampler.h
+@@ -67,7 +67,6 @@ class CounterSampler {
+  private:
+   rocprofiler_agent_id_t agent_ = {};
+   rocprofiler_context_id_t ctx_ = {};
+-  rocprofiler_buffer_id_t buf_ = {};
+   rocprofiler_profile_config_id_t profile_ = {.handle = 0};
+ 
+   std::map<std::vector<std::string>, rocprofiler_profile_config_id_t> cached_profiles_;
+diff --git a/rdc_libs/rdc_modules/rdc_rocp/RdcRocpCounterSampler.cc b/rdc_libs/rdc_modules/rdc_rocp/RdcRocpCounterSampler.cc
+index 03accfa..0affac6 100644
+--- a/rdc_libs/rdc_modules/rdc_rocp/RdcRocpCounterSampler.cc
++++ b/rdc_libs/rdc_modules/rdc_rocp/RdcRocpCounterSampler.cc
+@@ -63,31 +63,13 @@ std::vector<std::shared_ptr<CounterSampler>>& CounterSampler::get_samplers() { r
+ 
+ CounterSampler::CounterSampler(rocprofiler_agent_id_t agent) : agent_(agent) {
+   // Setup context (should only be done once per agent)
+-  auto client_thread = rocprofiler_callback_thread_t{};
+   RocprofilerCall([&]() { return rocprofiler_create_context(&ctx_); }, "context creation failed",
+                   __FILE__, __LINE__);
+ 
+-  RocprofilerCall(
+-      [&]() {
+-        // 4096 is total buffer size
+-        // 2048 is size for callback buffer, not likely used as rdc reads results immediately, not
+-        // from buffer feature will drop in future
+-        return rocprofiler_create_buffer(
+-            ctx_, 4096, 2048, ROCPROFILER_BUFFER_POLICY_LOSSLESS,
+-            [](rocprofiler_context_id_t, rocprofiler_buffer_id_t, rocprofiler_record_header_t**,
+-               size_t, void*, uint64_t) {},
+-            nullptr, &buf_);
+-      },
+-      "buffer creation failed", __FILE__, __LINE__);
+-  RocprofilerCall([&]() { return rocprofiler_create_callback_thread(&client_thread); },
+-                  "failure creating callback thread", __FILE__, __LINE__);
+-  RocprofilerCall([&]() { return rocprofiler_assign_callback_thread(buf_, client_thread); },
+-                  "failed to assign thread for buffer", __FILE__, __LINE__);
+-
+   RocprofilerCall(
+       [&]() {
+         return rocprofiler_configure_device_counting_service(
+-            ctx_, buf_, agent,
++            ctx_, {.handle = 0}, agent,
+             [](rocprofiler_context_id_t context_id, rocprofiler_agent_id_t,
+                rocprofiler_agent_set_profile_callback_t set_config, void* user_data) {
+               if (user_data) {
+-- 
+2.43.5
+

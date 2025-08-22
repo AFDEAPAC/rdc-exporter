@@ -34,7 +34,7 @@ func main() {
 	)
 
 	// Define command line flags
-	pflag.StringVarP(&addr, "listen-address", "l", ":8080", "Address to listen on for HTTP requests")
+	pflag.StringVarP(&addr, "listen-address", "l", ":5000", "Address to listen on for HTTP requests")
 	pflag.BoolVarP(&enableDebug, "debug", "d", false, "Enable debug logging")
 	pflag.StringVar(&catalogPath, "catalog", "", "Path to the catalog YAML file")
 	pflag.StringSliceVarP(&fields, "fields", "e", nil, "Fields to scrape (e.g., 100,812)")
