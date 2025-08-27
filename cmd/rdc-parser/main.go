@@ -157,13 +157,11 @@ func main() {
 	fmt.Printf("Catalog written to %s\n", destPath)
 }
 
-// 判斷是否為純數字
 func isNumber(s string) bool {
 	_, err := strconv.Atoi(s)
 	return err == nil
 }
 
-// 轉換成 prometheus name（範例：RDC_FI_PCIE_TX -> fi_pcie_tx）
 func toPromName(enumValue int) string {
 	rdcFieldID := rdc.NewFieldIDFromInt(enumValue)
 	return strings.ToLower(rdcFieldID.Name())

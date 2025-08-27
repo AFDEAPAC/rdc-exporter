@@ -3,37 +3,37 @@ metrics:
     prom_name: gpu_clock
     field: "100"
     scale: 0.000001
-    desc: The current clock for the GPU
+    desc: Current GPU clock frequencies
   - metric: RDC_FI_MEM_CLOCK
     prom_name: mem_clock
     field: "101"
     scale: 1
-    desc: Clock for the memory
+    desc: Current Memory clock frequencies
   - metric: RDC_FI_MEMORY_TEMP
     prom_name: memory_temp
     field: "200"
     scale: 1
-    desc: Memory temperature for the device
+    desc: Memory temperature in millidegrees Celsius
   - metric: RDC_FI_GPU_TEMP
     prom_name: gpu_temp
     field: "201"
     scale: 0.001
-    desc: Current temperature for the device
+    desc: GPU temperature in millidegrees Celsius
   - metric: RDC_FI_POWER_USAGE
     prom_name: power_usage
     field: "300"
     scale: 0.000001
-    desc: Power usage for the device
+    desc: Power usage in microwatts
   - metric: RDC_FI_GPU_UTIL
     prom_name: gpu_util
     field: "500"
     scale: 1
-    desc: GPU Utilization
+    desc: GPU busy percentage
   - metric: RDC_FI_GPU_MEMORY_USAGE
     prom_name: gpu_memory_usage
     field: "501"
     scale: 0.000001
-    desc: Memory usage of the GPU instance
+    desc: Memory usage of the GPU instance in bytes
   - metric: RDC_FI_GPU_MEMORY_TOTAL
     prom_name: gpu_memory_total
     field: "502"
@@ -43,84 +43,102 @@ metrics:
     prom_name: ecc_correct
     field: "600"
     scale: 1
-    desc: Accumulated correctable ECC errors
+    desc: Accumulated Single Error Correction
   - metric: RDC_FI_ECC_UNCORRECT_TOTAL
     prom_name: ecc_uncorrect
     field: "601"
     scale: 1
-    desc: Accumulated uncorrectable ECC errors
+    desc: Accumulated Double Error Detection
   - metric: RDC_FI_PROF_OCCUPANCY_PERCENT
     prom_name: occupancy_percent
     field: "800"
     scale: 1
+    desc: Percent of GPU occupancy
   - metric: RDC_FI_PROF_ACTIVE_CYCLES
     prom_name: active_cycles
     field: "801"
     scale: 1
+    desc: Number of Active Cycles
   - metric: RDC_FI_PROF_ACTIVE_WAVES
     prom_name: active_waves
     field: "802"
     scale: 1
+    desc: Number of Active Waves
   - metric: RDC_FI_PROF_ELAPSED_CYCLES
     prom_name: elapsed_cycles
     field: "803"
     scale: 1
+    desc: Number of Elapsed Cycles over all SMs
   - metric: RDC_FI_PROF_TENSOR_ACTIVE_PERCENT
     prom_name: tensor_percent
     field: "804"
     scale: 1
+    desc: Percent of Active Pipe Tensors
   - metric: RDC_FI_PROF_GPU_UTIL_PERCENT
     prom_name: gpu_util_percent
     field: "805"
     scale: 1
+    desc: Percent of GPU Utilization
   - metric: RDC_FI_PROF_EVAL_MEM_R_BW
     prom_name: mem_r_bw
     field: "806"
     scale: 1
+    desc: Fetched from video memory kb / ms
   - metric: RDC_FI_PROF_EVAL_MEM_W_BW
     prom_name: mem_w_bw
     field: "807"
     scale: 1
+    desc: Written to video memory kb / ms
   - metric: RDC_FI_PROF_EVAL_FLOPS_16
     prom_name: flops_16
     field: "808"
     scale: 1
+    desc: Number of fp16 OPS / ms
   - metric: RDC_FI_PROF_EVAL_FLOPS_32
     prom_name: flops_32
     field: "809"
     scale: 1
+    desc: Number of fp32 OPS / ms
   - metric: RDC_FI_PROF_EVAL_FLOPS_64
     prom_name: flops_64
     field: "810"
     scale: 1
+    desc: Number of fp64 OPS / ms
   - metric: RDC_FI_PROF_VALU_PIPE_ISSUE_UTIL
     prom_name: valu_utilization
     field: "811"
     scale: 1
+    desc: Percent of Active Pipe VALU
   - metric: RDC_FI_PROF_SM_ACTIVE
     prom_name: valubusy
     field: "812"
     scale: 1
+    desc: Ratio of Cycles with active warp on SM
   - metric: RDC_FI_PROF_OCC_PER_ACTIVE_CU
     prom_name: occ_cu
     field: "813"
     scale: 1
+    desc: Mean occ per active compute unit
   - metric: RDC_FI_PROF_OCC_ELAPSED
     prom_name: occ_cu_elapsed
     field: "814"
     scale: 1
+    desc: Mean occ per active cu over elapsed
   - metric: RDC_FI_PROF_EVAL_FLOPS_16_PERCENT
     prom_name: flops_16_percent
     field: "815"
     scale: 1
+    desc: Number of fp16 OPS percent of max
   - metric: RDC_FI_PROF_EVAL_FLOPS_32_PERCENT
     prom_name: flops_32_percent
     field: "816"
     scale: 1
+    desc: Number of fp32 OPS percent of max
   - metric: RDC_FI_PROF_EVAL_FLOPS_64_PERCENT
     prom_name: flops_64_percent
     field: "817"
     scale: 1
+    desc: Number of fp64 OPS percent of max
   - metric: RDC_HEALTH_RETIRED_PAGE_NUM
     prom_name: retired_page_num
     field: "3002"

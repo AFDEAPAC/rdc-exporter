@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: rdc-exporter
+  namespace: monitoring
+  labels:
+    app: rdc-exporter
+spec:
+  selector:
+    matchLabels:
+      app: rdc-exporter
+  template:
+    metadata:
+      labels:
+        app: rdc-exporter
+    spec:
+      hostNetwork: true
+      containers:
+        - name: rdc-exporter
+          image: rdc-exporter:v1-rocm6.3-20250827
+          imagePullPolicy: IfNotPresent
+          args: ["-k", "/var/lib/kubelet/pod-resources/kubelet.sock"]
+          ports:
+            - containerPort: 5000
+              protocol: TCP
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_PTRACE"]
+          volumeMounts:
+            - name: dev-kfd
+              mountPath: /dev/kfd
+            - name: dev-dri
+              mountPath: /dev/dri
+            - name: pod-resources-socket
+              mountPath: /var/lib/kubelet/pod-resources/kubelet.sock
+              readOnly: true
+      volumes:
+        - name: dev-kfd
+          hostPath:
+            path: /dev/kfd
+            type: CharDevice
+        - name: dev-dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
+        - name: pod-resources-socket
+          hostPath:
+            path: /var/lib/kubelet/pod-resources/kubelet.sock # Adjust path if necessary
+            type: Socket
+      restartPolicy: Always
+      tolerations:
+        - operator: Exists
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 100%

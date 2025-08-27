@@ -20,18 +20,10 @@ RUN apt update && \
 ## Setup ROCm environment
 ARG ROCM_VERSION="6.3.3"
 ENV ROCM_HOME="/opt/rocm-${ROCM_VERSION}"
-ENV CMAKE_PREFIX_PATH="$ROCM_HOME/lib/cmake:$CMAKE_PREFIX_PATH"
-ENV CPLUS_INCLUDE_PATH="$ROCM_HOME/include:$CPLUS_INCLUDE_PATH"
-ENV LD_LIBRARY_PATH="$ROCM_HOME/lib:/usr/local/lib:$LD_LIBRARY_PATH"
+ENV CMAKE_PREFIX_PATH="$ROCM_HOME/lib/cmake:${CMAKE_PREFIX_PATH:-/usr/local/lib/cmake}"
+ENV CPLUS_INCLUDE_PATH="$ROCM_HOME/include:${CPLUS_INCLUDE_PATH:-/usr/local/include}"
+ENV LD_LIBRARY_PATH="$ROCM_HOME/lib:${LD_LIBRARY_PATH:-/usr/local/lib}"
 ENV PATH="$ROCM_HOME/bin:$PATH"
-
-LABEL org.opencontainers.image.title="rdc-exporter" \
-      org.opencontainers.image.authors="DCGPU System Eng TWN, AMD Inc." \
-      org.opencontainers.image.description="RDC Exporter for AMD GPU (ROCm ${ROCM_VERSION}, built by TWCE Team, Data Center GPU Division, AMD Inc.)" \
-      org.opencontainers.image.source="https://github.com/ROCm/rdc-exporter" \
-      org.opencontainers.image.vendor="AMD Inc." \
-      org.opencontainers.image.version="20250822" \
-      com.amd.rocm.version="${ROCM_VERSION}"
 
 WORKDIR /opt
 
@@ -41,6 +33,11 @@ FROM base AS builder
 RUN apt update && \
     apt install -y build-essential cmake git && \
     apt clean
+
+## Download and install Go
+ARG GO_VERSION="1.24.5"
+RUN wget -qO- https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+ENV PATH="/usr/local/go/bin:$PATH"
 
 ## Build grpc
 FROM builder AS grpc-builder
@@ -56,7 +53,6 @@ RUN cmake -B build \
     -DCMAKE_INSTALL_PREFIX=$GRPC_ROOT \
     -DCMAKE_INSTALL_LIBDIR=lib \
     -DCMAKE_BUILD_TYPE=Release
-RUN make -C build -j $(nproc)
 RUN make -C build install -j $(nproc)
 
 ## Build rocprofiler-sdk (with patch)
@@ -101,7 +97,7 @@ RUN cmake .. \
     -DCMAKE_HIP_COMPILER=${ROCM_HOME}/bin/amdclang++
 RUN cmake --build . -j$(nproc)
 RUN make install -j$(nproc)
-RUN make install -j$(nproc) DESTDIR=/package
+RUN make install -j$(nproc) DESTDIR=/exports
 
 ## Install grpc
 COPY --from=grpc-builder ${GRPC_ROOT} ${GRPC_ROOT}
@@ -119,12 +115,7 @@ RUN git submodule update --init --recursive
 RUN cmake -B build -DGRPC_ROOT="$GRPC_ROOT" -DBUILD_PROFILER=ON -DBUILD_RVS=OFF -DCMAKE_INSTALL_PREFIX=${ROCM_HOME}
 RUN make -C build -j $(nproc)
 RUN make -C build install -j $(nproc)
-RUN make -C build install -j $(nproc) DESTDIR=/package
-
-## Download and install Go
-ARG GO_VERSION="1.24.5"
-RUN wget -qO- https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
-ENV PATH="/usr/local/go/bin:${PATH}"
+RUN make -C build install -j $(nproc) DESTDIR=/exports
 
 ## Build rdc-exporter
 WORKDIR /opt/rdc-exporter
@@ -140,22 +131,31 @@ RUN make
 ## Final output
 FROM base
 
+LABEL org.opencontainers.image.title="rdc-exporter" \
+      org.opencontainers.image.authors="DCGPU System Eng TWN, AMD Inc." \
+      org.opencontainers.image.description="RDC Exporter for AMD GPU" \
+      org.opencontainers.image.source="https://github.com/ROCm/rdc-exporter" \
+      org.opencontainers.image.vendor="AMD Inc." \
+      org.opencontainers.image.version="20250822" \
+      com.amd.rocm.version="${ROCM_VERSION}"
+
 # Install basic ROCm packages
-RUN apt install -y amd-smi-lib comgr hip-runtime-amd hsa-amd-aqlprofile libhsa-runtime64-1 libdw1 && \
+RUN apt update && \
+    apt install -y amd-smi-lib comgr hip-runtime-amd hsa-amd-aqlprofile libhsa-runtime64-1 libdw1 && \
     apt clean
 
 # Install RocProfiler SDK and RDC
-COPY --from=rocmpkg-builder /package/opt/rocm-6.3.3 /opt/rocm-6.3.3
+COPY --from=rocmpkg-builder /exports/opt/rocm-6.3.3 /opt/rocm-6.3.3
 ENV HSA_TOOLS_LIB=$ROCM_HOME/lib/librocprofiler64.so
 
 # Install RDC exporter
-RUN --mount=type=bind,from=rocmpkg-builder,source=/opt/rdc-exporter,target=/builder,ro \
-    mkdir -p /opt/rdc-exporter/bin && \
-    cp /builder/bin/rdc-exporter /opt/rdc-exporter/bin/rdc-exporter && \
-    cp /builder/pkg/catalog/catalog.yaml /opt/rdc-exporter/catalog.yaml && \
-    chmod +x /opt/rdc-exporter/bin/rdc-exporter
-ENV PATH="/opt/rdc-exporter/bin:${PATH}"
 WORKDIR /opt/rdc-exporter
+RUN --mount=type=bind,from=rocmpkg-builder,source=/opt/rdc-exporter,target=/builder,ro \
+    mkdir -p bin && \
+    cp /builder/bin/rdc-exporter bin/rdc-exporter && \
+    cp /builder/pkg/catalog/catalog.yaml catalog-example.yaml && \
+    chmod +x bin/rdc-exporter
+ENV PATH="/opt/rdc-exporter/bin:$PATH"
 
 EXPOSE 5000
-CMD ["/opt/rdc-exporter/bin/rdc-exporter"]
+ENTRYPOINT ["/opt/rdc-exporter/bin/rdc-exporter"]
