@@ -7,12 +7,10 @@ metrics:
   - metric: RDC_FI_MEM_CLOCK
     prom_name: mem_clock
     field: "101"
-    scale: 1
     desc: Current Memory clock frequencies
   - metric: RDC_FI_MEMORY_TEMP
     prom_name: memory_temp
     field: "200"
-    scale: 1
     desc: Memory temperature in millidegrees Celsius
   - metric: RDC_FI_GPU_TEMP
     prom_name: gpu_temp
@@ -24,10 +22,21 @@ metrics:
     field: "300"
     scale: 0.000001
     desc: Power usage in microwatts
+  - metric: RDC_FI_PCIE_TX
+    prom_name: pcie_tx
+    field: "400"
+    desc: PCIe Tx utilization in bytes/second
+  - metric: RDC_FI_PCIE_RX
+    prom_name: pcie_rx
+    field: "401"
+    desc: PCIe Rx utilization in bytes/second
+  - metric: RDC_FI_PCIE_BANDWIDTH
+    prom_name: pcie_bandwidth
+    field: "403"
+    desc: PCIe bandwidth in Mbps
   - metric: RDC_FI_GPU_UTIL
     prom_name: gpu_util
     field: "500"
-    scale: 1
     desc: GPU busy percentage
   - metric: RDC_FI_GPU_MEMORY_USAGE
     prom_name: gpu_memory_usage
@@ -39,108 +48,584 @@ metrics:
     field: "502"
     scale: 0.000001
     desc: Total memory of the GPU instance
+  - metric: RDC_FI_GPU_MM_ENC_UTIL
+    prom_name: gpu_mm_enc_util
+    field: "503"
+    desc: Mutilmedia encoder busy percentage
+  - metric: RDC_FI_GPU_MM_DEC_UTIL
+    prom_name: gpu_mm_dec_util
+    field: "504"
+    desc: Mutilmedia decoder busy percentage
+  - metric: RDC_FI_GPU_MEMORY_ACTIVITY
+    prom_name: gpu_mem_util
+    field: "505"
+    desc: Memory busy percentage
+  - metric: RDC_FI_GPU_MEMORY_MAX_BANDWIDTH
+    prom_name: gpu_mem_max_bandwidth
+    field: "506"
+    desc: Memory max bandwidth
+  - metric: RDC_FI_GPU_MEMORY_CUR_BANDWIDTH
+    prom_name: gpu_mem_cur_bandwidth
+    field: "507"
+    desc: Memory current bandwidth
+  - metric: RDC_FI_GPU_BUSY_PERCENT
+    prom_name: gpu_busy_percent
+    field: "508"
+    desc: GPU busy percentage
+  - metric: RDC_FI_GPU_PAGE_RETRIED
+    prom_name: gpu_page_retried
+    field: "550"
+    desc: Retried page of the GPU instance
   - metric: RDC_FI_ECC_CORRECT_TOTAL
     prom_name: ecc_correct
     field: "600"
-    scale: 1
     desc: Accumulated Single Error Correction
   - metric: RDC_FI_ECC_UNCORRECT_TOTAL
     prom_name: ecc_uncorrect
     field: "601"
-    scale: 1
     desc: Accumulated Double Error Detection
+  - metric: RDC_FI_ECC_SDMA_UE
+    prom_name: ecc_sdma_ue
+    field: "604"
+    desc: SDMA Uncorrectable Error
+  - metric: RDC_FI_ECC_GFX_CE
+    prom_name: ecc_gfx_ce
+    field: "605"
+    desc: GFX Correctable Error
+  - metric: RDC_FI_ECC_GFX_UE
+    prom_name: ecc_gfx_ue
+    field: "606"
+    desc: GFX Uncorrectable Error
+  - metric: RDC_FI_ECC_MMHUB_CE
+    prom_name: ecc_mmhub_ce
+    field: "607"
+    desc: MMHUB Correctable Error
+  - metric: RDC_FI_ECC_MMHUB_UE
+    prom_name: ecc_mmhub_ue
+    field: "608"
+    desc: MMHUB Uncorrectable Error
+  - metric: RDC_FI_ECC_ATHUB_CE
+    prom_name: ecc_athub_ce
+    field: "609"
+    desc: ATHUB Correctable Error
+  - metric: RDC_FI_ECC_ATHUB_UE
+    prom_name: ecc_athub_ue
+    field: "610"
+    desc: ATHUB Uncorrectable Error
+  - metric: RDC_FI_ECC_PCIE_BIF_CE
+    prom_name: ecc_pcie_bif_ce
+    field: "611"
+    desc: PCIE_BIF Correctable Error
+  - metric: RDC_FI_ECC_PCIE_BIF_UE
+    prom_name: ecc_pcie_bif_ue
+    field: "612"
+    desc: PCIE_BIF Uncorrectable Error
+  - metric: RDC_FI_ECC_HDP_CE
+    prom_name: ecc_hdp_ce
+    field: "613"
+    desc: HDP Correctable Error
+  - metric: RDC_FI_ECC_HDP_UE
+    prom_name: ecc_hdp_ue
+    field: "614"
+    desc: HDP Uncorrectable Error
+  - metric: RDC_FI_ECC_XGMI_WAFL_CE
+    prom_name: ecc_xgmi_wafl_ce
+    field: "615"
+    desc: XGMI_WAFL Correctable Error
+  - metric: RDC_FI_ECC_XGMI_WAFL_UE
+    prom_name: ecc_xgmi_wafl_ue
+    field: "616"
+    desc: XGMI_WAFL Uncorrectable Error
+  - metric: RDC_FI_ECC_DF_CE
+    prom_name: ecc_df_ce
+    field: "617"
+    desc: DF Correctable Error
+  - metric: RDC_FI_ECC_DF_UE
+    prom_name: ecc_df_ue
+    field: "618"
+    desc: DF Uncorrectable Error
+  - metric: RDC_FI_ECC_SMN_CE
+    prom_name: ecc_smn_ce
+    field: "619"
+    desc: SMN Correctable Error
+  - metric: RDC_FI_ECC_SMN_UE
+    prom_name: ecc_smn_ue
+    field: "620"
+    desc: SMN Uncorrectable Error
+  - metric: RDC_FI_ECC_SEM_CE
+    prom_name: ecc_sem_ce
+    field: "621"
+    desc: SEM Correctable Error
+  - metric: RDC_FI_ECC_SEM_UE
+    prom_name: ecc_sem_ue
+    field: "622"
+    desc: SEM Uncorrectable Error
+  - metric: RDC_FI_ECC_MP0_CE
+    prom_name: ecc_mp0_ce
+    field: "623"
+    desc: MP0 Correctable Error
+  - metric: RDC_FI_ECC_MP0_UE
+    prom_name: ecc_mp0_ue
+    field: "624"
+    desc: MP0 Uncorrectable Error
+  - metric: RDC_FI_ECC_MP1_CE
+    prom_name: ecc_mp1_ce
+    field: "625"
+    desc: MP1 Correctable Error
+  - metric: RDC_FI_ECC_MP1_UE
+    prom_name: ecc_mp1_ue
+    field: "626"
+    desc: MP1 Uncorrectable Error
+  - metric: RDC_FI_ECC_FUSE_CE
+    prom_name: ecc_fuse_ce
+    field: "627"
+    desc: FUSE Correctable Error
+  - metric: RDC_FI_ECC_FUSE_UE
+    prom_name: ecc_fuse_ue
+    field: "628"
+    desc: FUSE Uncorrectable Error
+  - metric: RDC_FI_ECC_UMC_CE
+    prom_name: ecc_umc_ce
+    field: "629"
+    desc: UMC Correctable Error
+  - metric: RDC_FI_ECC_UMC_UE
+    prom_name: ecc_umc_ue
+    field: "630"
+    desc: UMC Uncorrectable Error
+  - metric: RDC_FI_ECC_MCA_CE
+    prom_name: ecc_mca_ce
+    field: "631"
+    desc: MCA Correctable Error
+  - metric: RDC_FI_ECC_MCA_UE
+    prom_name: ecc_mca_ue
+    field: "632"
+    desc: MCA Uncorrectable Error
+  - metric: RDC_FI_ECC_VCN_CE
+    prom_name: ecc_vcn_ce
+    field: "633"
+    desc: VCN Correctable Error
+  - metric: RDC_FI_ECC_VCN_UE
+    prom_name: ecc_vcn_ue
+    field: "634"
+    desc: VCN Uncorrectable Error
+  - metric: RDC_FI_ECC_JPEG_CE
+    prom_name: ecc_jpeg_ce
+    field: "635"
+    desc: JPEG Correctable Error
+  - metric: RDC_FI_ECC_JPEG_UE
+    prom_name: ecc_jpeg_ue
+    field: "636"
+    desc: JPEG Uncorrectable Error
+  - metric: RDC_FI_ECC_IH_CE
+    prom_name: ecc_ih_ce
+    field: "637"
+    desc: IH Correctable Error
+  - metric: RDC_FI_ECC_IH_UE
+    prom_name: ecc_ih_ue
+    field: "638"
+    desc: IH Uncorrectable Error
+  - metric: RDC_FI_ECC_MPIO_CE
+    prom_name: ecc_mpio_ce
+    field: "639"
+    desc: MPIO Correctable Error
+  - metric: RDC_FI_ECC_MPIO_UE
+    prom_name: ecc_mpio_ue
+    field: "640"
+    desc: MPIO Uncorrectable Error
+  - metric: RDC_FI_XGMI_0_READ_KB
+    prom_name: xgmi_0_read
+    field: "700"
+    desc: XGMI0 accumulated data read size (KB)
+  - metric: RDC_FI_XGMI_1_READ_KB
+    prom_name: xgmi_1_read
+    field: "701"
+    desc: XGMI1 accumulated data read size (KB)
+  - metric: RDC_FI_XGMI_2_READ_KB
+    prom_name: xgmi_2_read
+    field: "702"
+    desc: XGMI2 accumulated data read size (KB)
+  - metric: RDC_FI_XGMI_3_READ_KB
+    prom_name: xgmi_3_read
+    field: "703"
+    desc: XGMI3 accumulated data read size (KB)
+  - metric: RDC_FI_XGMI_4_READ_KB
+    prom_name: xgmi_4_read
+    field: "704"
+    desc: XGMI4 accumulated data read size (KB)
+  - metric: RDC_FI_XGMI_5_READ_KB
+    prom_name: xgmi_5_read
+    field: "705"
+    desc: XGMI5 accumulated data read size (KB)
+  - metric: RDC_FI_XGMI_6_READ_KB
+    prom_name: xgmi_6_read
+    field: "706"
+    desc: XGMI6 accumulated data read size (KB)
+  - metric: RDC_FI_XGMI_7_READ_KB
+    prom_name: xgmi_7_read
+    field: "707"
+    desc: XGMI7 accumulated data read size (KB)
+  - metric: RDC_FI_XGMI_0_WRITE_KB
+    prom_name: xgmi_0_write
+    field: "708"
+    desc: XGMI0 accumulated data write size (KB)
+  - metric: RDC_FI_XGMI_1_WRITE_KB
+    prom_name: xgmi_1_write
+    field: "709"
+    desc: XGMI1 accumulated data write size (KB)
+  - metric: RDC_FI_XGMI_2_WRITE_KB
+    prom_name: xgmi_2_write
+    field: "710"
+    desc: XGMI2 accumulated data write size (KB)
+  - metric: RDC_FI_XGMI_3_WRITE_KB
+    prom_name: xgmi_3_write
+    field: "711"
+    desc: XGMI3 accumulated data write size (KB)
+  - metric: RDC_FI_XGMI_4_WRITE_KB
+    prom_name: xgmi_4_write
+    field: "712"
+    desc: XGMI4 accumulated data write size (KB)
+  - metric: RDC_FI_XGMI_5_WRITE_KB
+    prom_name: xgmi_5_write
+    field: "713"
+    desc: XGMI5 accumulated data write size (KB)
+  - metric: RDC_FI_XGMI_6_WRITE_KB
+    prom_name: xgmi_6_write
+    field: "714"
+    desc: XGMI6 accumulated data write size (KB)
+  - metric: RDC_FI_XGMI_7_WRITE_KB
+    prom_name: xgmi_7_write
+    field: "715"
+    desc: XGMI7 accumulated data write size (KB)
+  - metric: RDC_FI_XGMI_TOTAL_READ_KB
+    prom_name: xgmi_total_read
+    field: "716"
+    desc: XGMI accumlated data read size across all lanes (KB)
+  - metric: RDC_FI_XGMI_TOTAL_WRITE_KB
+    prom_name: xgmi_total_write
+    field: "717"
+    desc: XGMI accumlated data write size across all lanes (KB)
   - metric: RDC_FI_PROF_OCCUPANCY_PERCENT
     prom_name: occupancy_percent
     field: "800"
-    scale: 1
     desc: Percent of GPU occupancy
   - metric: RDC_FI_PROF_ACTIVE_CYCLES
     prom_name: active_cycles
     field: "801"
-    scale: 1
     desc: Number of Active Cycles
   - metric: RDC_FI_PROF_ACTIVE_WAVES
     prom_name: active_waves
     field: "802"
-    scale: 1
     desc: Number of Active Waves
   - metric: RDC_FI_PROF_ELAPSED_CYCLES
     prom_name: elapsed_cycles
     field: "803"
-    scale: 1
     desc: Number of Elapsed Cycles over all SMs
   - metric: RDC_FI_PROF_TENSOR_ACTIVE_PERCENT
     prom_name: tensor_percent
     field: "804"
-    scale: 1
     desc: Percent of Active Pipe Tensors
   - metric: RDC_FI_PROF_GPU_UTIL_PERCENT
     prom_name: gpu_util_percent
     field: "805"
-    scale: 1
     desc: Percent of GPU Utilization
   - metric: RDC_FI_PROF_EVAL_MEM_R_BW
     prom_name: mem_r_bw
     field: "806"
-    scale: 1
     desc: Fetched from video memory kb / ms
   - metric: RDC_FI_PROF_EVAL_MEM_W_BW
     prom_name: mem_w_bw
     field: "807"
-    scale: 1
     desc: Written to video memory kb / ms
   - metric: RDC_FI_PROF_EVAL_FLOPS_16
     prom_name: flops_16
     field: "808"
-    scale: 1
     desc: Number of fp16 OPS / ms
   - metric: RDC_FI_PROF_EVAL_FLOPS_32
     prom_name: flops_32
     field: "809"
-    scale: 1
     desc: Number of fp32 OPS / ms
   - metric: RDC_FI_PROF_EVAL_FLOPS_64
     prom_name: flops_64
     field: "810"
-    scale: 1
     desc: Number of fp64 OPS / ms
   - metric: RDC_FI_PROF_VALU_PIPE_ISSUE_UTIL
     prom_name: valu_utilization
     field: "811"
-    scale: 1
     desc: Percent of Active Pipe VALU
   - metric: RDC_FI_PROF_SM_ACTIVE
     prom_name: valubusy
     field: "812"
-    scale: 1
     desc: Ratio of Cycles with active warp on SM
   - metric: RDC_FI_PROF_OCC_PER_ACTIVE_CU
     prom_name: occ_cu
     field: "813"
-    scale: 1
     desc: Mean occ per active compute unit
   - metric: RDC_FI_PROF_OCC_ELAPSED
     prom_name: occ_cu_elapsed
     field: "814"
-    scale: 1
     desc: Mean occ per active cu over elapsed
   - metric: RDC_FI_PROF_EVAL_FLOPS_16_PERCENT
     prom_name: flops_16_percent
     field: "815"
-    scale: 1
     desc: Number of fp16 OPS percent of max
   - metric: RDC_FI_PROF_EVAL_FLOPS_32_PERCENT
     prom_name: flops_32_percent
     field: "816"
-    scale: 1
     desc: Number of fp32 OPS percent of max
   - metric: RDC_FI_PROF_EVAL_FLOPS_64_PERCENT
     prom_name: flops_64_percent
     field: "817"
-    scale: 1
     desc: Number of fp64 OPS percent of max
+  - metric: RDC_FI_PROF_CPC_CPC_STAT_BUSY
+    prom_name: cpc_cpc_stat_busy
+    field: "818"
+  - metric: RDC_FI_PROF_CPC_CPC_STAT_IDLE
+    prom_name: cpc_cpc_stat_idle
+    field: "819"
+  - metric: RDC_FI_PROF_CPC_CPC_STAT_STALL
+    prom_name: cpc_cpc_stat_stall
+    field: "820"
+  - metric: RDC_FI_PROF_CPC_CPC_TCIU_BUSY
+    prom_name: cpc_cpc_tciu_busy
+    field: "821"
+  - metric: RDC_FI_PROF_CPC_CPC_TCIU_IDLE
+    prom_name: cpc_cpc_tciu_idle
+    field: "822"
+  - metric: RDC_FI_PROF_CPC_CPC_UTCL2IU_BUSY
+    prom_name: cpc_cpc_utcl2iu_busy
+    field: "823"
+  - metric: RDC_FI_PROF_CPC_CPC_UTCL2IU_IDLE
+    prom_name: cpc_cpc_utcl2iu_idle
+    field: "824"
+  - metric: RDC_FI_PROF_CPC_CPC_UTCL2IU_STALL
+    prom_name: cpc_cpc_utcl2iu_stall
+    field: "825"
+  - metric: RDC_FI_PROF_CPC_ME1_BUSY_FOR_PACKET_DECODE
+    prom_name: cpc_me1_busy_for_packet_decode
+    field: "826"
+  - metric: RDC_FI_PROF_CPC_ME1_DC0_SPI_BUSY
+    prom_name: cpc_me1_dc0_spi_busy
+    field: "827"
+  - metric: RDC_FI_PROF_CPC_UTCL1_STALL_ON_TRANSLATION
+    prom_name: cpc_utcl1_stall_on_translation
+    field: "828"
+  - metric: RDC_FI_PROF_CPC_ALWAYS_COUNT
+    prom_name: cpc_always_count
+    field: "829"
+  - metric: RDC_FI_PROF_CPC_ADC_VALID_CHUNK_NOT_AVAIL
+    prom_name: cpc_adc_valid_chunk_not_avail
+    field: "830"
+  - metric: RDC_FI_PROF_CPC_ADC_DISPATCH_ALLOC_DONE
+    prom_name: cpc_adc_dispatch_alloc_done
+    field: "831"
+  - metric: RDC_FI_PROF_CPC_ADC_VALID_CHUNK_END
+    prom_name: cpc_adc_valid_chunk_end
+    field: "832"
+  - metric: RDC_FI_PROF_CPC_SYNC_FIFO_FULL_LEVEL
+    prom_name: cpc_sync_fifo_full_level
+    field: "833"
+  - metric: RDC_FI_PROF_CPC_SYNC_FIFO_FULL
+    prom_name: cpc_sync_fifo_full
+    field: "834"
+  - metric: RDC_FI_PROF_CPC_GD_BUSY
+    prom_name: cpc_gd_busy
+    field: "835"
+  - metric: RDC_FI_PROF_CPC_TG_SEND
+    prom_name: cpc_tg_send
+    field: "836"
+  - metric: RDC_FI_PROF_CPC_WALK_NEXT_CHUNK
+    prom_name: cpc_walk_next_chunk
+    field: "837"
+  - metric: RDC_FI_PROF_CPC_STALLED_BY_SE0_SPI
+    prom_name: cpc_stalled_by_se0_spi
+    field: "838"
+  - metric: RDC_FI_PROF_CPC_STALLED_BY_SE1_SPI
+    prom_name: cpc_stalled_by_se1_spi
+    field: "839"
+  - metric: RDC_FI_PROF_CPC_STALLED_BY_SE2_SPI
+    prom_name: cpc_stalled_by_se2_spi
+    field: "840"
+  - metric: RDC_FI_PROF_CPC_STALLED_BY_SE3_SPI
+    prom_name: cpc_stalled_by_se3_spi
+    field: "841"
+  - metric: RDC_FI_PROF_CPC_LTE_ALL
+    prom_name: cpc_lte_all
+    field: "842"
+  - metric: RDC_FI_PROF_CPC_SYNC_WRREQ_FIFO_BUSY
+    prom_name: cpc_sync_wrreq_fifo_busy
+    field: "843"
+  - metric: RDC_FI_PROF_CPC_CANE_BUSY
+    prom_name: cpc_cane_busy
+    field: "844"
+  - metric: RDC_FI_PROF_CPC_CANE_STALL
+    prom_name: cpc_cane_stall
+    field: "845"
+  - metric: RDC_FI_PROF_CPF_CMP_UTCL1_STALL_ON_TRANSLATION
+    prom_name: cpf_cmp_utcl1_stall_on_translation
+    field: "846"
+  - metric: RDC_FI_PROF_CPF_CPF_STAT_BUSY
+    prom_name: cpf_cpf_stat_busy
+    field: "847"
+  - metric: RDC_FI_PROF_CPF_CPF_STAT_IDLE
+    prom_name: cpf_cpf_stat_idle
+    field: "848"
+  - metric: RDC_FI_PROF_CPF_CPF_STAT_STALL
+    prom_name: cpf_cpf_stat_stall
+    field: "849"
+  - metric: RDC_FI_PROF_CPF_CPF_TCIU_BUSY
+    prom_name: cpf_cpf_tciu_busy
+    field: "850"
+  - metric: RDC_FI_PROF_CPF_CPF_TCIU_IDLE
+    prom_name: cpf_cpf_tciu_idle
+    field: "851"
+  - metric: RDC_FI_PROF_CPF_CPF_TCIU_STALL
+    prom_name: cpf_cpf_tciu_stall
+    field: "852"
+  - metric: RDC_FI_PROF_SIMD_UTILIZATION
+    prom_name: simd_utilization
+    field: "853"
+    desc: Fraction of time the SIMDs are being utilized
+  - metric: RDC_FI_PROF_KFD_ID
+    prom_name: prof_kfd_id
+    field: "854"
+    desc: GPU_ID from rocprofiler, same as KFD_ID
+  - metric: RDC_EVNT_XGMI_0_NOP_TX
+    prom_name: xgmi_nop_0
+    field: "1000"
+    desc: NOPs sent to neighbor 0
+  - metric: RDC_EVNT_XGMI_0_REQ_TX
+    prom_name: xgmi_req_0
+    field: "1001"
+    desc: Outgoing requests to neighbor 0
+  - metric: RDC_EVNT_XGMI_0_RESP_TX
+    prom_name: xgmi_res_0
+    field: "1002"
+    desc: Outgoing responses to neighbor 0
+  - metric: RDC_EVNT_XGMI_0_BEATS_TX
+    prom_name: xgmi_bts_0
+    field: "1003"
+    desc: Data sent to neighbor 0 (32 byte pkts)
+  - metric: RDC_EVNT_XGMI_1_NOP_TX
+    prom_name: xgmi_nop_1
+    field: "1004"
+    desc: NOPs sent to neighbor 1
+  - metric: RDC_EVNT_XGMI_1_REQ_TX
+    prom_name: xgmi_req_1
+    field: "1005"
+    desc: Outgoing requests to neighbor 1
+  - metric: RDC_EVNT_XGMI_1_RESP_TX
+    prom_name: xgmi_res_1
+    field: "1006"
+    desc: Outgoing responses to neighbor 1
+  - metric: RDC_EVNT_XGMI_1_BEATS_TX
+    prom_name: xgmi_bts_1
+    field: "1007"
+    desc: Data sent to neighbor 1 (32 byte pkts)
+  - metric: RDC_EVNT_XGMI_0_THRPUT
+    prom_name: xgmi_0_t
+    field: "1500"
+    desc: Tx throughput to XGMI neighbor 0 in b/s
+  - metric: RDC_EVNT_XGMI_1_THRPUT
+    prom_name: xgmi_1_t
+    field: "1501"
+    desc: Tx throughput to XGMI neighbor 1 in b/s
+  - metric: RDC_EVNT_XGMI_2_THRPUT
+    prom_name: xgmi_2_t
+    field: "1502"
+    desc: Tx throughput to XGMI neighbor 2 in b/s
+  - metric: RDC_EVNT_XGMI_3_THRPUT
+    prom_name: xgmi_3_t
+    field: "1503"
+    desc: Tx throughput to XGMI neighbor 3 in b/s
+  - metric: RDC_EVNT_XGMI_4_THRPUT
+    prom_name: xgmi_4_t
+    field: "1504"
+    desc: Tx throughput to XGMI neighbor 4 in b/s
+  - metric: RDC_EVNT_XGMI_5_THRPUT
+    prom_name: xgmi_5_t
+    field: "1505"
+    desc: Tx throughput to XGMI neighbor 5 in b/s
+  - metric: RDC_EVNT_NOTIF_VMFAULT
+    prom_name: vm_page_fault
+    field: "2000"
+    desc: VM page fault
+  - metric: RDC_EVNT_NOTIF_THERMAL_THROTTLE
+    prom_name: thermal_throt
+    field: "2002"
+    desc: Clk freq decrease due to temp
+  - metric: RDC_EVNT_NOTIF_PRE_RESET
+    prom_name: gpu_pre_reset
+    field: "2003"
+    desc: GPU reset is about to occur
+  - metric: RDC_EVNT_NOTIF_POST_RESET
+    prom_name: gpu_post_reset
+    field: "2004"
+    desc: GPU reset just occurred
+  - metric: RDC_EVNT_NOTIF_MIGRATE_START
+    prom_name: migrate_start
+    field: "2005"
+    desc: GPU migrate has started
+  - metric: RDC_EVNT_NOTIF_MIGRATE_END
+    prom_name: migrate_end
+    field: "2006"
+    desc: GPU migrate has ended
+  - metric: RDC_EVNT_NOTIF_PAGE_FAULT_START
+    prom_name: page_fault_start
+    field: "2007"
+    desc: GPU page fault started
+  - metric: RDC_EVNT_NOTIF_PAGE_FAULT_END
+    prom_name: page_fault_end
+    field: "2008"
+    desc: GPU page fault ended
+  - metric: RDC_EVNT_NOTIF_QUEUE_EVICTION
+    prom_name: queue_evicition
+    field: "2009"
+    desc: GPU queue eviction occured
+  - metric: RDC_EVNT_NOTIF_QUEUE_RESTORE
+    prom_name: queue_restore
+    field: "2010"
+    desc: GPU queue restore occured
+  - metric: RDC_EVNT_NOTIF_UNMAP_FROM_GPU
+    prom_name: unmap_from_gpu
+    field: "2011"
+    desc: GPU unmap occured
+  - metric: RDC_EVNT_NOTIF_PROCESS_START
+    prom_name: process_start
+    field: "2012"
+    desc: GPU process started
+  - metric: RDC_EVNT_NOTIF_PROCESS_END
+    prom_name: process_end
+    field: "2013"
+    desc: GPU process ended
+  - metric: RDC_HEALTH_XGMI_ERROR
+    prom_name: xgmi_error
+    field: "3000"
+    desc: XGMI one or more errors detected
+  - metric: RDC_HEALTH_PCIE_REPLAY_COUNT
+    prom_name: pcie_replay_count
+    field: "3001"
+    desc: Total PCIE replay count
   - metric: RDC_HEALTH_RETIRED_PAGE_NUM
     prom_name: retired_page_num
     field: "3002"
-    scale: 1
     desc: Retired page number
+  - metric: RDC_HEALTH_PENDING_PAGE_NUM
+    prom_name: pending_page_num
+    field: "3003"
+    desc: Pending page number
+  - metric: RDC_HEALTH_RETIRED_PAGE_LIMIT
+    prom_name: retired_page_limit
+    field: "3004"
+    desc: Retired page limit
+  - metric: RDC_HEALTH_EEPROM_CONFIG_VALID
+    prom_name: eeprom_config_valid
+    field: "3005"
+    desc: Verify checksum of EEPROM
+  - metric: RDC_HEALTH_POWER_THROTTLE_TIME
+    prom_name: power_throttle_time
+    field: "3006"
+    desc: Power throttle status counter
+  - metric: RDC_HEALTH_THERMAL_THROTTLE_TIME
+    prom_name: thermal_throttle_time
+    field: "3007"
+    desc: Total time(ms) in thermal throttle status

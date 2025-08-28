@@ -201,7 +201,8 @@ func (c *Catalog) Validate() error {
 			return fmt.Errorf("entity field is empty for metric: %s", entity.Metric)
 		}
 		if entity.Scale <= 0 {
-			return fmt.Errorf("entity scale must be greater than 0 for metric: %s", entity.Metric)
+			slog.Debug("Entity scale is not set or invalid, defaulting to 1", "metric", entity.Metric, "scale", entity.Scale)
+			entity.Scale = 1 // default to 1 if not set or invalid
 		}
 	}
 	return nil

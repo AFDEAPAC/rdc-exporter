@@ -76,10 +76,43 @@ func main() {
 		}
 	}
 
-	// If fields are provided, filter the catalog entities
-	if len(fields) > 0 {
-		catalg.FilterEntitiesByFields(fields)
+	// If fields are not specified, use a default set
+	if len(fields) == 0 {
+		slog.Info("No fields specified, exporting default fields")
+		fields = []string{
+			"RDC_FI_GPU_CLOCK",
+			"RDC_FI_MEM_CLOCK",
+			"RDC_FI_MEMORY_TEMP",
+			"RDC_FI_GPU_TEMP",
+			"RDC_FI_POWER_USAGE",
+			"RDC_FI_GPU_UTIL",
+			"RDC_FI_GPU_MEMORY_USAGE",
+			"RDC_FI_GPU_MEMORY_TOTAL",
+			"RDC_FI_ECC_CORRECT_TOTAL",
+			"RDC_FI_ECC_UNCORRECT_TOTAL",
+			"RDC_FI_PROF_OCCUPANCY_PERCENT",
+			"RDC_FI_PROF_ACTIVE_CYCLES",
+			"RDC_FI_PROF_ACTIVE_WAVES",
+			"RDC_FI_PROF_ELAPSED_CYCLES",
+			"RDC_FI_PROF_TENSOR_ACTIVE_PERCENT",
+			"RDC_FI_PROF_GPU_UTIL_PERCENT",
+			"RDC_FI_PROF_EVAL_MEM_R_BW",
+			"RDC_FI_PROF_EVAL_MEM_W_BW",
+			"RDC_FI_PROF_EVAL_FLOPS_16",
+			"RDC_FI_PROF_EVAL_FLOPS_32",
+			"RDC_FI_PROF_EVAL_FLOPS_64",
+			"RDC_FI_PROF_VALU_PIPE_ISSUE_UTIL",
+			"RDC_FI_PROF_SM_ACTIVE",
+			"RDC_FI_PROF_OCC_PER_ACTIVE_CU",
+			"RDC_FI_PROF_OCC_ELAPSED",
+			"RDC_FI_PROF_EVAL_FLOPS_16_PERCENT",
+			"RDC_FI_PROF_EVAL_FLOPS_32_PERCENT",
+			"RDC_FI_PROF_EVAL_FLOPS_64_PERCENT",
+			"RDC_HEALTH_RETIRED_PAGE_NUM",
+		}
 	}
+
+	catalg.FilterEntitiesByFields(fields)
 
 	if len(catalg.Entities) == 0 {
 		slog.Error("No valid entities found in the catalog")
