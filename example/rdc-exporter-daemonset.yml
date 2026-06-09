@@ -1,3 +1,41 @@
+# rdc-exporter metrics list, mounted into the container and passed via `-f`.
+# Each non-empty line is one RDC field (field name or numeric id).
+#
+# IMPORTANT: the number of metrics you can scrape simultaneously is HARDWARE-DEPENDENT.
+#   Telemetry fields (clock/temp/power/util/memory/ecc) come from amd-smi/sysfs and are cheap.
+#   Profiling fields (RDC_FI_PROF_*) map to GPU hardware PMC counters and are packed into a
+#   single profiling packet; requesting too many at once can exceed the GPU's PMC packet
+#   capacity and make the RDC profiling layer abort (which silently wedges collection).
+#   Tune the profiling set to your GPU: start small and add fields gradually.
+#   See docs/issues/0001-profiling-fields-pmc-packet-overflow.md for details.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rdc-exporter-metrics
+  namespace: monitoring
+  labels:
+    app: rdc-exporter
+data:
+  metrics.txt: |
+    # --- telemetry (amd-smi/sysfs, cheap) ---
+    RDC_FI_GPU_CLOCK
+    RDC_FI_MEM_CLOCK
+    RDC_FI_MEMORY_TEMP
+    RDC_FI_GPU_TEMP
+    RDC_FI_POWER_USAGE
+    RDC_FI_GPU_UTIL
+    RDC_FI_GPU_MEMORY_USAGE
+    RDC_FI_GPU_MEMORY_TOTAL
+    RDC_FI_ECC_CORRECT_TOTAL
+    RDC_FI_ECC_UNCORRECT_TOTAL
+    # --- profiling (PMC counters, hardware-limited; keep the count modest) ---
+    RDC_FI_PROF_OCCUPANCY_PERCENT
+    RDC_FI_PROF_GPU_UTIL_PERCENT
+    RDC_FI_PROF_TENSOR_ACTIVE_PERCENT
+    RDC_FI_PROF_ACTIVE_CYCLES
+    RDC_FI_PROF_ELAPSED_CYCLES
+    RDC_FI_PROF_EVAL_FLOPS_16
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -19,7 +57,8 @@ spec:
         - name: rdc-exporter
           image: ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.2-20260609
           imagePullPolicy: IfNotPresent
-          args: ["-k", "/var/lib/kubelet/pod-resources/kubelet.sock"]
+          # `-f` reads the field list from the mounted ConfigMap (metrics.txt above).
+          args: ["-k", "/var/lib/kubelet/pod-resources/kubelet.sock", "-f", "/etc/rdc-exporter/metrics.txt"]
           ports:
             - containerPort: 5000
               protocol: TCP
@@ -35,6 +74,9 @@ spec:
             - name: pod-resources-socket
               mountPath: /var/lib/kubelet/pod-resources/kubelet.sock
               readOnly: true
+            - name: metrics
+              mountPath: /etc/rdc-exporter
+              readOnly: true
       volumes:
         - name: dev-kfd
           hostPath:
@@ -46,8 +88,17 @@ spec:
             type: Directory
         - name: pod-resources-socket
           hostPath:
+            # NOTE: this path is the kubelet pod-resources socket ON THE HOST and MUST match the
+            # host's real kubelet root-dir. It differs by distribution, e.g.:
+            #   - standard kubelet (kubeadm, etc.): /var/lib/kubelet/pod-resources/kubelet.sock
+            #   - k0s:                               /var/lib/k0s/kubelet/pod-resources/kubelet.sock
+            # Find it with: ps -ewwo args | grep -o 'root-dir=[^ ]*'
+            # (The container-side mountPath and the `-k` arg above can stay as-is.)
             path: /var/lib/kubelet/pod-resources/kubelet.sock # Adjust path if necessary
             type: Socket
+        - name: metrics
+          configMap:
+            name: rdc-exporter-metrics
       restartPolicy: Always
       tolerations:
         - operator: Exists
