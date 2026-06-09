@@ -26,7 +26,7 @@ Before adding or modifying any code, also read:
 When the task involves implementation planning, code changes, review of code
 changes, domain behavior, data models, or core flows, also read:
 
-1. `docs/development/glossaries/README.md` — understand the glossary workflow
+1. `docs/domain/glossaries/README.md` — understand the glossary workflow
    and locate relevant domain terminology.
 
 ## Coding Style Completion Gate
