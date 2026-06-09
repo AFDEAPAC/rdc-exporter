@@ -1,3 +1,11 @@
+// Command rdc-exporter is the entry point that wires the exporter together and
+// runs it.
+//
+// This is the outermost Frameworks and Drivers layer: it parses flags, loads the
+// catalog, constructs the RDC reader, Prometheus sink, and optional Kubernetes
+// labeler adapters, and drives the collect use case on a fixed interval while
+// serving the Prometheus /metrics endpoint. It contains glue and lifecycle code
+// only; the collection rules live in the inner layers.
 package main
 
 import (
@@ -10,18 +18,25 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ROCm/rdc-exporter/pkg/catalog"
-	"github.com/ROCm/rdc-exporter/pkg/exporter"
-	"github.com/ROCm/rdc-exporter/pkg/labeler"
-	"github.com/ROCm/rdc-exporter/pkg/labeler/k8s"
+	"github.com/ROCm/rdc-exporter/internal/adapter/k8slabeler"
+	"github.com/ROCm/rdc-exporter/internal/adapter/prommetric"
+	"github.com/ROCm/rdc-exporter/internal/adapter/rdcsource"
+	"github.com/ROCm/rdc-exporter/internal/bindings/rdc"
+	"github.com/ROCm/rdc-exporter/internal/config/catalog"
+	"github.com/ROCm/rdc-exporter/internal/domain/metric"
+	"github.com/ROCm/rdc-exporter/internal/usecase/collect"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 )
 
-func main() {
+// scrapeInterval is how often the exporter refreshes its metrics from RDC. It is
+// the long-standing five-second cadence and changing it alters the resolution of
+// every exported series.
+const scrapeInterval = 5 * time.Second
 
+func main() {
 	var (
 		addr           string
 		catalogPath    string
@@ -33,7 +48,6 @@ func main() {
 		selfMonitoring bool
 	)
 
-	// Define command line flags
 	pflag.StringVarP(&addr, "listen-address", "l", ":5000", "Address to listen on for HTTP requests")
 	pflag.BoolVarP(&enableDebug, "debug", "d", false, "Enable debug logging")
 	pflag.StringVar(&catalogPath, "catalog", "", "Path to the catalog YAML file")
@@ -44,7 +58,6 @@ func main() {
 	pflag.BoolVar(&selfMonitoring, "self-monitoring", false, "Enable self-monitoring metrics")
 	pflag.Parse()
 
-	// Configure the logger
 	var logOpts *slog.HandlerOptions
 	if enableDebug {
 		logOpts = &slog.HandlerOptions{
@@ -53,7 +66,6 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, logOpts)))
 
-	// Parse the catalog
 	catalg, err := catalog.ParseCatalogYAML(catalogPath)
 	if err != nil {
 		slog.Error("Failed to parse catalog YAML", "error", err)
@@ -61,62 +73,42 @@ func main() {
 	}
 
 	if fieldsFilePath != "" {
-		// Read metrics from file, one per line
 		file, err := os.ReadFile(fieldsFilePath)
 		if err != nil {
 			slog.Error("Failed to read fields file", "error", err)
 			return
 		}
-		lines := strings.Split(string(file), "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line != "" {
+		for _, line := range strings.Split(string(file), "\n") {
+			if line = strings.TrimSpace(line); line != "" {
 				fields = append(fields, line)
 			}
 		}
 	}
 
-	// If fields are not specified, use a default set
 	if len(fields) == 0 {
 		slog.Info("No fields specified, exporting default fields")
-		fields = []string{
-			"RDC_FI_GPU_CLOCK",
-			"RDC_FI_MEM_CLOCK",
-			"RDC_FI_MEMORY_TEMP",
-			"RDC_FI_GPU_TEMP",
-			"RDC_FI_POWER_USAGE",
-			"RDC_FI_GPU_UTIL",
-			"RDC_FI_GPU_MEMORY_USAGE",
-			"RDC_FI_GPU_MEMORY_TOTAL",
-			"RDC_FI_ECC_CORRECT_TOTAL",
-			"RDC_FI_ECC_UNCORRECT_TOTAL",
-			"RDC_FI_PROF_OCCUPANCY_PERCENT",
-			"RDC_FI_PROF_ACTIVE_CYCLES",
-			"RDC_FI_PROF_ACTIVE_WAVES",
-			"RDC_FI_PROF_ELAPSED_CYCLES",
-			"RDC_FI_PROF_TENSOR_ACTIVE_PERCENT",
-			"RDC_FI_PROF_GPU_UTIL_PERCENT",
-			"RDC_FI_PROF_EVAL_MEM_R_BW",
-			"RDC_FI_PROF_EVAL_MEM_W_BW",
-			"RDC_FI_PROF_EVAL_FLOPS_16",
-			"RDC_FI_PROF_EVAL_FLOPS_32",
-			"RDC_FI_PROF_EVAL_FLOPS_64",
-			"RDC_FI_PROF_VALU_PIPE_ISSUE_UTIL",
-			"RDC_FI_PROF_SM_ACTIVE",
-			"RDC_FI_PROF_OCC_PER_ACTIVE_CU",
-			"RDC_FI_PROF_OCC_ELAPSED",
-			"RDC_FI_PROF_EVAL_FLOPS_16_PERCENT",
-			"RDC_FI_PROF_EVAL_FLOPS_32_PERCENT",
-			"RDC_FI_PROF_EVAL_FLOPS_64_PERCENT",
-			"RDC_HEALTH_RETIRED_PAGE_NUM",
-		}
+		fields = defaultFields()
 	}
 
 	catalg.FilterEntitiesByFields(fields)
-
 	if len(catalg.Entities) == 0 {
 		slog.Error("No valid entities found in the catalog")
 		return
+	}
+
+	// Resolve a field's enum name through the RDC bindings only when the catalog
+	// leaves a metric's name blank; injecting it here keeps the catalog and domain
+	// layers free of cgo.
+	fieldName := func(id int) string { return rdc.NewFieldIDFromInt(id).Name() }
+	definitions, err := catalog.DefinitionsFromEntities(catalg.Entities, fieldName)
+	if err != nil {
+		slog.Error("Failed to build metric definitions", "error", err)
+		return
+	}
+
+	fieldIDs := make([]metric.FieldID, len(definitions))
+	for i, def := range definitions {
+		fieldIDs[i] = def.FieldID
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -124,26 +116,45 @@ func main() {
 
 	reg := prometheus.NewRegistry()
 	if selfMonitoring {
-		reg.Register(collectors.NewGoCollector())
-		reg.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+		// Best-effort self-monitoring on a fresh registry; registration of the
+		// standard collectors cannot conflict here, so the errors are ignored.
+		_ = reg.Register(collectors.NewGoCollector())
+		_ = reg.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	}
 
-	var lb labeler.Labeler
+	// The labeler is optional. It is kept as a concrete value so its Close can be
+	// deferred, and only assigned to the use-case port when present to avoid a
+	// non-nil interface wrapping a nil pointer.
+	var labelProvider collect.LabelProvider
 	if kubeletPath != "" {
-		lb, err = k8s.NewK8sLabeler(kubeletPath)
+		lb, err := k8slabeler.New(kubeletPath)
 		if err != nil {
 			slog.Error("Failed to create K8s labeler", "error", err)
 			return
 		}
 		defer lb.Close()
+		labelProvider = lb
 	}
 
-	exp, err := exporter.NewExporter(reg, catalg, gpuIndexes, lb)
+	var dynamicLabelKeys []string
+	if labelProvider != nil {
+		dynamicLabelKeys = labelProvider.LabelKeys()
+	}
+
+	reader, err := rdcsource.New(rdcsource.DefaultConfig(), gpuIndexes, fieldIDs)
 	if err != nil {
-		slog.Error("Failed to create exporter: %v", err)
+		slog.Error("Failed to create RDC reader", "error", err)
 		return
 	}
-	defer exp.Close()
+	defer reader.Close()
+
+	sink, err := prommetric.New(reg, definitions, dynamicLabelKeys)
+	if err != nil {
+		slog.Error("Failed to register metrics", "error", err)
+		return
+	}
+
+	service := collect.NewService(definitions, reader, sink, labelProvider)
 
 	go func() {
 		for {
@@ -152,8 +163,10 @@ func main() {
 				slog.Info("Shutting down exporter")
 				return
 			default:
-				exp.Scrape(ctx)
-				time.Sleep(5 * time.Second) // Scrape every 5 seconds
+				if err := service.Collect(ctx); err != nil {
+					slog.Error("Failed to collect metrics", "error", err)
+				}
+				time.Sleep(scrapeInterval)
 			}
 		}
 	}()
@@ -174,7 +187,9 @@ func main() {
 		}
 	}()
 
-	// Wait for Ctrl+C or SIGTERM
+	// Block until an interrupt or termination signal cancels ctx, then ask the
+	// HTTP server to shut down before the deferred RDC/labeler cleanup releases
+	// external resources.
 	<-ctx.Done()
 	slog.Info("Shutting down exporter and HTTP server...")
 
@@ -185,4 +200,41 @@ func main() {
 	}
 
 	slog.Info("Exporter exited")
+}
+
+// defaultFields is the metric set exported when the user does not request any
+// fields. It is the established default selection and changing it changes what a
+// default deployment exposes.
+func defaultFields() []string {
+	return []string{
+		"RDC_FI_GPU_CLOCK",
+		"RDC_FI_MEM_CLOCK",
+		"RDC_FI_MEMORY_TEMP",
+		"RDC_FI_GPU_TEMP",
+		"RDC_FI_POWER_USAGE",
+		"RDC_FI_GPU_UTIL",
+		"RDC_FI_GPU_MEMORY_USAGE",
+		"RDC_FI_GPU_MEMORY_TOTAL",
+		"RDC_FI_ECC_CORRECT_TOTAL",
+		"RDC_FI_ECC_UNCORRECT_TOTAL",
+		"RDC_FI_PROF_OCCUPANCY_PERCENT",
+		"RDC_FI_PROF_ACTIVE_CYCLES",
+		"RDC_FI_PROF_ACTIVE_WAVES",
+		"RDC_FI_PROF_ELAPSED_CYCLES",
+		"RDC_FI_PROF_TENSOR_ACTIVE_PERCENT",
+		"RDC_FI_PROF_GPU_UTIL_PERCENT",
+		"RDC_FI_PROF_EVAL_MEM_R_BW",
+		"RDC_FI_PROF_EVAL_MEM_W_BW",
+		"RDC_FI_PROF_EVAL_FLOPS_16",
+		"RDC_FI_PROF_EVAL_FLOPS_32",
+		"RDC_FI_PROF_EVAL_FLOPS_64",
+		"RDC_FI_PROF_VALU_PIPE_ISSUE_UTIL",
+		"RDC_FI_PROF_SM_ACTIVE",
+		"RDC_FI_PROF_OCC_PER_ACTIVE_CU",
+		"RDC_FI_PROF_OCC_ELAPSED",
+		"RDC_FI_PROF_EVAL_FLOPS_16_PERCENT",
+		"RDC_FI_PROF_EVAL_FLOPS_32_PERCENT",
+		"RDC_FI_PROF_EVAL_FLOPS_64_PERCENT",
+		"RDC_HEALTH_RETIRED_PAGE_NUM",
+	}
 }

@@ -17,7 +17,7 @@ spec:
       hostNetwork: true
       containers:
         - name: rdc-exporter
-          image: rdc-exporter:v1-rocm6.3-20250827
+          image: ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.2-20260609
           imagePullPolicy: IfNotPresent
           args: ["-k", "/var/lib/kubelet/pod-resources/kubelet.sock"]
           ports:

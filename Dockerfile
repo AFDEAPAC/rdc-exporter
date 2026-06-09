@@ -57,7 +57,7 @@ ARG BUILD_DATE
 LABEL org.opencontainers.image.title="rdc-exporter" \
       org.opencontainers.image.authors="DCGPU System Eng TWN, AMD Inc." \
       org.opencontainers.image.description="RDC Exporter for AMD GPU" \
-      org.opencontainers.image.source="https://github.com/AFDEAPAC/rdc-exporter" \
+      org.opencontainers.image.source="https://github.com/maple52046/rdc-exporter" \
       org.opencontainers.image.vendor="AMD Inc." \
       org.opencontainers.image.version="${BUILD_DATE:-20251210}" \
       com.amd.rocm.version="${ROCM_VERSION}"
@@ -72,7 +72,7 @@ WORKDIR /opt/rdc-exporter
 RUN --mount=type=bind,from=builder,source=/opt/rdc-exporter,target=/builder,ro \
     mkdir -p bin && \
     cp /builder/bin/rdc-exporter bin/rdc-exporter && \
-    cp /builder/pkg/catalog/catalog.yaml catalog-example.yaml && \
+    cp /builder/internal/config/catalog/catalog.yaml catalog-example.yaml && \
     chmod +x bin/rdc-exporter
 ENV PATH="/opt/rdc-exporter/bin:$PATH"
 

@@ -1,3 +1,11 @@
+// Command rdc-parser is a development helper that generates the metric catalog
+// from the RDC C header.
+//
+// It is peripheral to rdc-exporter: it is run by maintainers to (re)generate
+// catalog.yaml from the rdc_field_t enum in rdc.h, not part of the exporter
+// runtime. It lives in the Frameworks and Drivers layer and reuses the catalog
+// configuration types and the RDC bindings only to emit the same YAML shape the
+// exporter consumes.
 package main
 
 import (
@@ -10,7 +18,7 @@ import (
 	"strings"
 
 	"github.com/ROCm/rdc-exporter/internal/bindings/rdc"
-	"github.com/ROCm/rdc-exporter/pkg/catalog"
+	"github.com/ROCm/rdc-exporter/internal/config/catalog"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
@@ -157,11 +165,16 @@ func main() {
 	fmt.Printf("Catalog written to %s\n", destPath)
 }
 
+// isNumber reports whether s is a base-10 integer literal, used to tell an
+// explicit enum value apart from a reference to another enum member.
 func isNumber(s string) bool {
 	_, err := strconv.Atoi(s)
 	return err == nil
 }
 
+// toPromName derives the default Prometheus metric name for a field enum value
+// by lowercasing the RDC enum name, matching the fallback the exporter applies
+// when a catalog entry omits prom_name.
 func toPromName(enumValue int) string {
 	rdcFieldID := rdc.NewFieldIDFromInt(enumValue)
 	return strings.ToLower(rdcFieldID.Name())

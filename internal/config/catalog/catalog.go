@@ -9,16 +9,39 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// defaultCatalogYAML is the full metric catalog generated from the RDC field
+// enum and shipped inside the binary. It is the baseline that user catalogs are
+// merged onto, and the fallback when no user catalog is provided. The list is
+// intentionally complete; which metrics are exported by default is decided in
+// the entry point, not here.
+//
 //go:embed catalog.yaml
 var defaultCatalogYAML []byte
 
+// Catalog is a parsed set of metric entities plus the loading mode flag.
+//
+// Catalog is a configuration aggregate, not a domain type. Overwrite selects how
+// a user-supplied catalog combines with the embedded default (see
+// ParseCatalogYAML). Callers convert a finished Catalog into domain definitions
+// with DefinitionsFromEntities once the desired entities are selected.
 type Catalog struct {
-	Entities  []*Entity `yaml:"metrics"`             // List of catalog entries
-	Overwrite bool      `yaml:"overwrite,omitempty"` // Whether to overwrite existing entries
+	// Entities is the configured metric list.
+	Entities []*Entity `yaml:"metrics"`
+	// Overwrite, when true, makes a user catalog replace the default entirely
+	// instead of being merged onto it.
+	Overwrite bool `yaml:"overwrite,omitempty"`
 }
 
+// ParseCatalogYAML loads the effective catalog from filePath, combined with the
+// embedded default.
+//
+// With an empty filePath the embedded default catalog is returned unchanged. A
+// user catalog with overwrite set replaces the default with its own valid,
+// enabled entries, falling back to the default when it has none. Otherwise the
+// user catalog is merged onto the default (user fields win, defaults fill gaps)
+// and the merged result is validated. It returns an error when the file cannot
+// be read or parsed, or when the merged catalog fails validation.
 func ParseCatalogYAML(filePath string) (*Catalog, error) {
-
 	defaultCatalog, err := loadDefaultCatalog()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load default catalog: %w", err)
@@ -34,19 +57,19 @@ func ParseCatalogYAML(filePath string) (*Catalog, error) {
 		return nil, err
 	}
 
-	// Handle overwrite mode
+	// Overwrite mode discards the default entirely, but only if the user catalog
+	// still has valid, enabled entries; otherwise fall back to the default so the
+	// exporter never starts with an empty catalog.
 	if userCatalog.Overwrite {
 		cleanCatalog := cleanAndValidateCatalog(userCatalog)
 		if cleanCatalog != nil {
 			slog.Debug("Use overwritten catalog", "file", filePath, "entries", len(cleanCatalog.Entities))
 			return cleanCatalog, nil
 		}
-		// no valid entries in overwrite mode, so fall back to default
 		slog.Debug("Overwrite catalog is empty, falling back to default")
 		return defaultCatalog, nil
 	}
 
-	// Merge default and user catalogs
 	mergedCatalog := mergeCatalogs(defaultCatalog, userCatalog)
 	if err := mergedCatalog.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating merged catalog: %w", err)
@@ -55,6 +78,9 @@ func ParseCatalogYAML(filePath string) (*Catalog, error) {
 	return mergedCatalog, nil
 }
 
+// loadDefaultCatalog unmarshals the embedded default catalog. A parse failure
+// here indicates a corrupt or malformed embedded asset, which is a build-time
+// rather than user error.
 func loadDefaultCatalog() (*Catalog, error) {
 	var catalog Catalog
 	if err := yaml.Unmarshal(defaultCatalogYAML, &catalog); err != nil {
@@ -64,6 +90,8 @@ func loadDefaultCatalog() (*Catalog, error) {
 	return &catalog, nil
 }
 
+// loadUserCatalog reads and parses the user-supplied catalog file. Errors are
+// wrapped with the path to help locate a misconfigured deployment.
 func loadUserCatalog(filePath string) (*Catalog, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -79,6 +107,9 @@ func loadUserCatalog(filePath string) (*Catalog, error) {
 	return &catalog, nil
 }
 
+// cleanAndValidateCatalog prepares an overwrite-mode catalog by dropping disabled
+// metrics and validating the rest. It returns nil when nothing valid remains so
+// the caller can fall back to the default catalog.
 func cleanAndValidateCatalog(catalog *Catalog) *Catalog {
 	catalog.removeDisabledMetrics()
 	if len(catalog.Entities) == 0 {
@@ -91,6 +122,12 @@ func cleanAndValidateCatalog(catalog *Catalog) *Catalog {
 	return catalog
 }
 
+// mergeCatalogs overlays userCatalog onto defaultCatalog keyed by Metric.
+//
+// Default entries seed the result; each user entry then overrides the matching
+// default field by field (see mergeEntity). Entries with an empty Metric key or
+// no resolvable Field are skipped, and entries explicitly disabled by the user
+// are dropped from the result.
 func mergeCatalogs(defaultCatalog, userCatalog *Catalog) *Catalog {
 	entities := make(map[string]*Entity)
 
@@ -125,6 +162,10 @@ func mergeCatalogs(defaultCatalog, userCatalog *Catalog) *Catalog {
 	return result
 }
 
+// mergeEntity produces the effective entity for one metric by taking the user
+// entry's explicit values and filling any gaps from the matching default entry.
+// A user-supplied non-positive scale is treated as unset and falls back to the
+// default scale, matching how ApplyScale later treats non-positive scales.
 func mergeEntity(defaultEntity, userEntity *Entity) *Entity {
 	merged := &Entity{
 		Metric:   userEntity.Metric,
@@ -153,6 +194,13 @@ func mergeEntity(defaultEntity, userEntity *Entity) *Entity {
 	return merged
 }
 
+// FilterEntitiesByFields restricts the catalog to the entities selected by the
+// given field references.
+//
+// Each reference matches an entity by its Metric name, numeric Field id, or
+// PromName. Matched entities are re-enabled (their Disabled flag is cleared) and
+// kept in catalog order; all others are removed. This is how the entry point
+// narrows the full catalog down to the requested metric set.
 func (c *Catalog) FilterEntitiesByFields(fields []string) {
 	keep := make(map[*Entity]bool)
 	for _, f := range fields {
@@ -174,6 +222,8 @@ func (c *Catalog) FilterEntitiesByFields(fields []string) {
 	c.Entities = filtered
 }
 
+// removeDisabledMetrics drops every entity flagged Disabled, keeping catalog
+// order for the rest.
 func (c *Catalog) removeDisabledMetrics() {
 	enabledEntities := make([]*Entity, 0, len(c.Entities))
 	for _, entity := range c.Entities {
@@ -185,6 +235,12 @@ func (c *Catalog) removeDisabledMetrics() {
 	slog.Debug("Removed disabled metrics", "remaining", len(c.Entities))
 }
 
+// Validate checks that the catalog is usable and normalizes scales.
+//
+// It requires a non-empty catalog where every entity has a Metric key, a
+// PromName, and a Field id. As a side effect it rewrites any non-positive Scale
+// to 1 so downstream consumers see an explicit identity scale. It returns an
+// error describing the first invalid entity.
 func (c *Catalog) Validate() error {
 	if len(c.Entities) == 0 {
 		return fmt.Errorf("catalog contains no metrics")
@@ -202,7 +258,7 @@ func (c *Catalog) Validate() error {
 		}
 		if entity.Scale <= 0 {
 			slog.Debug("Entity scale is not set or invalid, defaulting to 1", "metric", entity.Metric, "scale", entity.Scale)
-			entity.Scale = 1 // default to 1 if not set or invalid
+			entity.Scale = 1
 		}
 	}
 	return nil
