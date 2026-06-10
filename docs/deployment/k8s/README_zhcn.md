@@ -19,6 +19,7 @@
 | 项目 | 需求 |
 | --- | --- |
 | Kubernetes 集群 | 已具备一套可正常运行的 Kubernetes 集群，且管理客户端 `kubectl` 可访问该集群。集群本身的安装与配置不在本指南范围内。 |
+| kubelet pod-resources API | 每个 GPU worker 节点都必须启用 kubelet 的 **pod-resources API**，即节点上必须存在 socket `/var/lib/kubelet/pod-resources/kubelet.sock`。`rdc-exporter` 正是通过此接口获取 GPU 与 Pod 的对应关系。实际 socket 路径可能因 Kubernetes 发行版而异（确认方式请参阅第 5.3 节）。 |
 | 节点架构 | GPU 节点为 `amd64`（`kubernetes.io/arch=amd64`）。 |
 | GPU 与驱动 | 节点具备 AMD GPU，且已安装 `amdgpu` 内核驱动；`/dev/kfd` 与 `/dev/dri/*` 设备节点存在。 |
 | 权限 | 具备于 `kube-system`、`monitoring` 等命名空间创建资源，以及按需调整节点 taint 的权限。 |
@@ -294,7 +295,7 @@ curl -s localhost:5000/metrics | head -20
 
 ### 6.1 配置清单
 
-请将下列内容保存为 `vllm-qwen.yaml`。此示例以 `--tensor-parallel-size 2`（TP=2）运行，需要 2 块 GPU，故 `amd.com/gpu` 设为 `2`，两者须一致。
+请将下列内容保存为 `vllm-qwen.yaml`（相同清单亦可在代码库的 `example/vllm-qwen.yml` 获取）。此示例以 `--tensor-parallel-size 1`（TP=1）运行一个小型的 `Qwen/Qwen2.5-0.5B-Instruct` 模型，需要 1 块 GPU，故 `amd.com/gpu` 设为 `1`，两者须一致。
 
 ```yaml
 apiVersion: apps/v1
@@ -314,17 +315,26 @@ spec:
       labels:
         app: vllm-qwen
     spec:
+      tolerations:
+        - operator: Exists
       containers:
         - name: vllm
-          image: rocm/ali-private:ubuntu22.04_rocm7.2.3_vllm_ec8d60be_aiter_0.1.13.post1_20260605
+          image: rocm/vllm:v0.14.0_amd_dev
           imagePullPolicy: IfNotPresent
-          # 镜像的 entrypoint 为 /bin/bash，需覆盖为 vllm serve
+          workingDir: /app
           command: ["vllm"]
           args:
             - "serve"
             - "Qwen/Qwen2.5-0.5B-Instruct"
             - "--tensor-parallel-size"
-            - "2"
+            - "1"
+            - "--gpu-memory-utilization"
+            - "0.06"
+            - "--max-model-len"
+            - "4096"
+            - "--max-num-seqs"
+            - "32"
+            - "--enforce-eager"
             - "--host"
             - "0.0.0.0"
             - "--port"
@@ -332,19 +342,22 @@ spec:
           ports:
             - containerPort: 8000
               name: http
+          env:
+            - name: HF_HOME
+              value: /tmp/hf
           resources:
             limits:
-              amd.com/gpu: 2          # 通过 device-plugin 申请 2 块 GPU（关键配置）
+              amd.com/gpu: 1          # 通过 device-plugin 申请 1 块 GPU（关键配置）
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 20
+            periodSeconds: 5
             failureThreshold: 60
           volumeMounts:
             - name: dshm
-              mountPath: /dev/shm     # vLLM / RCCL 需要较大的共享内存
+              mountPath: /dev/shm     # vLLM 需要较大的共享内存
       volumes:
         - name: dshm
           emptyDir:
@@ -385,7 +398,7 @@ IP=$(kubectl get pod -l app=vllm-qwen -o jsonpath='{.items[0].status.podIP}')
 curl -s "$IP:8000/v1/models"
 ```
 
-预期容器内可见 2 个 `renderD*` 设备，且 `/v1/models` 返回所加载的 `Qwen/Qwen2.5-0.5B-Instruct` 模型。
+预期容器内可见 1 个 `renderD*` 设备，且 `/v1/models` 返回所加载的 `Qwen/Qwen2.5-0.5B-Instruct` 模型。
 
 ### 6.4 确认 rdc-exporter 已关联 Pod 信息
 
@@ -393,11 +406,10 @@ curl -s "$IP:8000/v1/models"
 curl -s localhost:5000/metrics | grep 'pod="vllm-qwen'
 ```
 
-预期被分配的 GPU（例如 `gpu_index="0"`、`"1"`）会被标注上 `container`、`namespace` 与 `pod`：
+预期被分配的 GPU（例如 `gpu_index="0"`）会被标注上 `container`、`namespace` 与 `pod`：
 
 ```text
 gpu_memory_usage{container="vllm",gpu_index="0",namespace="default",pod="vllm-qwen-..."} 287252.5
-gpu_memory_usage{container="vllm",gpu_index="1",namespace="default",pod="vllm-qwen-..."} 287252.5
 ```
 
 对服务施加推理负载后，`gpu_clock`、`power_usage`、`active_cycles` 及 profiling 等指标应随之上升，代表指标采集与 Pod 关联均正常运行。

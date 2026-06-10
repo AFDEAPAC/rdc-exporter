@@ -19,6 +19,7 @@ Before you begin, make sure all of the following conditions are met:
 | Item | Requirement |
 | --- | --- |
 | Kubernetes cluster | A working Kubernetes cluster is already available, and the administrative client `kubectl` can access it. Installing and configuring the cluster itself is out of scope for this guide. |
+| kubelet pod-resources API | The kubelet **pod-resources API** must be enabled on every GPU worker node — that is, the socket `/var/lib/kubelet/pod-resources/kubelet.sock` must exist on the node. This is the interface `rdc-exporter` uses to map GPUs to Pods. The exact socket path can vary by Kubernetes distribution (see Section 5.3 for how to confirm it). |
 | Node architecture | GPU nodes are `amd64` (`kubernetes.io/arch=amd64`). |
 | GPU and driver | Nodes have AMD GPUs with the `amdgpu` kernel driver installed; the `/dev/kfd` and `/dev/dri/*` device nodes exist. |
 | Permissions | You have permission to create resources in namespaces such as `kube-system` and `monitoring`, and to adjust node taints as needed. |
@@ -294,7 +295,7 @@ This section uses a vLLM inference service as an example to verify the complete 
 
 ### 6.1 Manifest
 
-Save the following content as `vllm-qwen.yaml`. This example runs with `--tensor-parallel-size 2` (TP=2), which requires 2 GPUs, so `amd.com/gpu` is set to `2`; the two must match.
+Save the following content as `vllm-qwen.yaml` (the same manifest is available in the repository at `example/vllm-qwen.yml`). This example serves a small `Qwen/Qwen2.5-0.5B-Instruct` model with `--tensor-parallel-size 1` (TP=1), which requires 1 GPU, so `amd.com/gpu` is set to `1`; the two must match.
 
 ```yaml
 apiVersion: apps/v1
@@ -314,17 +315,26 @@ spec:
       labels:
         app: vllm-qwen
     spec:
+      tolerations:
+        - operator: Exists
       containers:
         - name: vllm
-          image: rocm/ali-private:ubuntu22.04_rocm7.2.3_vllm_ec8d60be_aiter_0.1.13.post1_20260605
+          image: rocm/vllm:v0.14.0_amd_dev
           imagePullPolicy: IfNotPresent
-          # The image's entrypoint is /bin/bash, so it must be overridden to run vllm serve
+          workingDir: /app
           command: ["vllm"]
           args:
             - "serve"
             - "Qwen/Qwen2.5-0.5B-Instruct"
             - "--tensor-parallel-size"
-            - "2"
+            - "1"
+            - "--gpu-memory-utilization"
+            - "0.06"
+            - "--max-model-len"
+            - "4096"
+            - "--max-num-seqs"
+            - "32"
+            - "--enforce-eager"
             - "--host"
             - "0.0.0.0"
             - "--port"
@@ -332,19 +342,22 @@ spec:
           ports:
             - containerPort: 8000
               name: http
+          env:
+            - name: HF_HOME
+              value: /tmp/hf
           resources:
             limits:
-              amd.com/gpu: 2          # request 2 GPUs through the device-plugin (the critical setting)
+              amd.com/gpu: 1          # request 1 GPU through the device-plugin (the critical setting)
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 20
+            periodSeconds: 5
             failureThreshold: 60
           volumeMounts:
             - name: dshm
-              mountPath: /dev/shm     # vLLM / RCCL needs a larger shared memory segment
+              mountPath: /dev/shm     # vLLM needs a larger shared memory segment
       volumes:
         - name: dshm
           emptyDir:
@@ -385,7 +398,7 @@ IP=$(kubectl get pod -l app=vllm-qwen -o jsonpath='{.items[0].status.podIP}')
 curl -s "$IP:8000/v1/models"
 ```
 
-Expect 2 `renderD*` devices to be visible inside the container, and `/v1/models` to return the loaded `Qwen/Qwen2.5-0.5B-Instruct` model.
+Expect 1 `renderD*` device to be visible inside the container, and `/v1/models` to return the loaded `Qwen/Qwen2.5-0.5B-Instruct` model.
 
 ### 6.4 Confirm rdc-exporter has associated Pod information
 
@@ -393,11 +406,10 @@ Expect 2 `renderD*` devices to be visible inside the container, and `/v1/models`
 curl -s localhost:5000/metrics | grep 'pod="vllm-qwen'
 ```
 
-Expect the allocated GPUs (e.g., `gpu_index="0"`, `"1"`) to be annotated with `container`, `namespace`, and `pod`:
+Expect the allocated GPU (e.g., `gpu_index="0"`) to be annotated with `container`, `namespace`, and `pod`:
 
 ```text
 gpu_memory_usage{container="vllm",gpu_index="0",namespace="default",pod="vllm-qwen-..."} 287252.5
-gpu_memory_usage{container="vllm",gpu_index="1",namespace="default",pod="vllm-qwen-..."} 287252.5
 ```
 
 After applying inference load to the service, metrics such as `gpu_clock`, `power_usage`, `active_cycles`, and the profiling metrics should rise accordingly, indicating that both metric collection and Pod association are working correctly.

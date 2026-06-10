@@ -2,7 +2,7 @@
 
 This document is the architecture constitution for `rdc-exporter`. It defines the architecture rules that all developers and AI agents must follow when performing requirement analysis, design, implementation, refactoring, and documentation updates within this repository.
 
-This project adopts **Clean Architecture** as its primary architectural principle, combined with the **Domain-Driven Design (DDD) principles for handling the core domain** (Distillation and Ubiquitous Language). Together they keep the core business rules independent of frameworks, external SDKs, transport protocols, and deployment details, while concentrating design attention on the core domain that truly creates value.
+This project adopts **Clean Architecture** as its primary and load-bearing architectural principle. On top of it, it borrows only two lightweight ideas from **Domain-Driven Design (DDD)**: a **Ubiquitous Language** for the domain vocabulary, and a light **Distillation** lens for deciding where to spend modeling attention. Clean Architecture keeps the core business rules independent of frameworks, external SDKs, transport protocols, and deployment details; the DDD ideas are a thin overlay that guides attention and naming and never overrides the layering or the Dependency Rule.
 
 This document is compiled from:
 
@@ -150,32 +150,22 @@ type FieldSource interface {
 - The lifecycle of external resources (RDC handler initialization and release, GPU group / field group creation and cleanup, HTTP server start and stop) is an outer-layer responsibility; the inner layer only describes the need and does not hold concrete handles.
 - Do not let an entity depend on an RDC handler, cgo resources, or request context.
 
-## DDD: Core Domain Principles
+## DDD: Lightweight Overlay
 
-This project combines the DDD principles for handling the core domain, which complement the layering of Clean Architecture. Clean Architecture is the primary architecture: it determines the boundaries, the direction of dependency, and where code lives. The DDD core domain principles are an overlay that determines where to focus design attention, modeling depth, and review intensity.
+Clean Architecture is the primary architecture and always wins: it decides where code lives and which way dependencies point. On top of it this project borrows only two DDD ideas. They guide attention and naming; they never move a layer boundary or reverse the Dependency Rule.
 
-These two views are orthogonal and must not be confused. The subdomain classification (core / supporting / generic) describes the problem space; the layers (Entities, Use Cases, Interface Adapters, Frameworks and Drivers) describe the solution structure and the direction of dependency. When the two appear to disagree, the Dependency Rule and Clean Architecture layering always win: a DDD classification never authorizes an inner layer to depend on an outer layer, and never overrides how a layer boundary is drawn.
+### Distillation (where to spend attention)
 
-### Distillation
+The value-creating part of this system is small and stable: collect the raw fields of GPUs, convert them by the configured scale, attach the correct labels, and produce metrics a monitoring system can consume. Spend the modeling and review effort there, and keep it in the inner layers (Entities and Use Cases).
 
-The system contains subdomains with different value and different rates of change. During development they must be identified and recorded in documentation, naming, and tests:
+Everything else — external SDK / cgo bindings, the Prometheus client, the HTTP server, CLI flag parsing, config file reading, and logging — is generic infrastructure. Keep it thin and in the outer layers. The Dependency Rule already enforces this placement; the only added guidance is to not let infrastructure grow into, or obscure, the value-creating rules.
 
-- **Core Domain**: the part that most creates differentiated value and most deserves deep modeling and design investment. For this project, the core domain is the set of domain rules and semantics that "collects the raw fields of GPUs, then performs scale conversion according to the configuration, attaches the correct labels, and produces metrics that monitoring systems can consume". Because these are framework-independent business rules and application flow, the Dependency Rule places them in the inner layers (Entities and Use Cases); they must stay small and clear.
-- **Supporting Subdomain**: supports the core domain but is not the main source of differentiation, for example the metric configuration (catalog) model and the rules for assembling label source information.
-- **Generic Subdomain**: necessary but generic problems, which should be simplified, bought, or isolated, for example external SDK / cgo bindings, the Prometheus client, the HTTP server, CLI flag parsing, config file reading, and logging. In this project these are concrete tools and infrastructure, so the Dependency Rule keeps them in the outer layers (Interface Adapters and Frameworks and Drivers).
-
-Subdomain classification guides how much modeling effort, isolation, and review intensity a part deserves; it does not by itself assign a layer. Layer placement is always governed by the Dependency Rule. A supporting or generic subdomain may still hold framework-independent rules in an inner layer, and belonging to the core domain never justifies depending on an outer layer.
-
-Rules:
-
-- Any change that affects the core domain (metric collection and conversion rules, the semantics of field/GPU/label) must raise the review intensity and synchronously update this document, the related naming, and the tests.
-- The generic subdomain must not absorb the design attention of the core domain. When generic mechanisms (cgo details, Prometheus types) begin to obscure the domain semantics, they must be separated into the outer layer so that the inner-layer model stays clear.
-- The core domain must be verifiable without external systems, following the layered testing rules below: entity rules with pure unit tests, and use-case flows with fake or in-memory ports. If it is hard to test, it usually means an outer-layer concern has leaked inward and the boundary needs correcting.
+A change that affects the value-creating rules (metric collection and conversion, the semantics of field/GPU/label) deserves higher review intensity and a synchronous update to this document, the related naming, and the tests.
 
 ### Ubiquitous Language
 
-- Within the domain, this project must use a consistent language and keep documentation, tests, output metric names, and code naming aligned.
-- A change in language is a change in the model: if code naming is inconsistent with the established domain semantics, first decide whether naming needs adjustment or whether synonyms and forbidden terms need to be explicitly recorded, and only then proceed with implementation.
+- Use one consistent vocabulary across documentation, tests, exported metric names, and code naming. The [`domain glossary`](../domain/glossary.md) is the source of that language.
+- A change in language is a change in the model: if code naming drifts from the established domain semantics, first decide whether the name or the glossary should change, and only then proceed with implementation.
 - Do not improvise new domain terms, types, or field semantics before the domain semantics are confirmed.
 - Naming must also follow [`coding-style.md`](coding-style.md): avoid names without clear domain meaning such as `util`, `common`, `helper`, and `model`, and let package names reflect their domain responsibility.
 
@@ -197,7 +187,7 @@ The following practices violate the architectural principles of this project:
 - Putting tags bound to an external framework into an entity, unless the tag is part of a stable inner-layer data contract and is documented.
 - Putting cross-layer data structures into vague packages such as `common`, `util`, or `model` for the sake of sharing convenience.
 - Letting the error codes, status codes, or data formats of an external framework become part of the business rules.
-- Letting the details of a generic subdomain (cgo, Prometheus, HTTP) leak into the model and flow of the core domain.
+- Letting generic infrastructure details (cgo, Prometheus, HTTP) leak into the value-creating rules and their flow.
 - Skipping tests because testing is difficult, instead of correcting the architectural boundary.
 
 ## Pre-Development Checklist
@@ -206,7 +196,6 @@ Before starting any development work, developers and agents must complete:
 
 - Have read this document.
 - Have determined whether the target code belongs to an entity, use case, interface adapter, or framework/driver.
-- Have identified whether this work touches the core domain, a supporting subdomain, or a generic subdomain.
 - Have confirmed that naming is consistent with the domain semantics and complies with [`coding-style.md`](coding-style.md).
 - Have confirmed whether this document, the tests, or related descriptions need synchronous updates.
 
@@ -214,13 +203,13 @@ Before starting any development work, developers and agents must complete:
 
 When an AI agent adds or modifies code in this project, it must follow these rules:
 
-- Before modifying, first determine the layer and subdomain (core / supporting / generic) the target code belongs to.
+- Before modifying, first determine which layer the target code belongs to.
 - When adding imports, check the direction of dependency; inner layers must not import outer layers.
 - When adding cross-layer data passing, confirm that the data format is defined by the inner layer or is inner-layer friendly, and do not pass cgo/Prometheus/HTTP types into the inner layer.
 - When adding integration with external tools, frameworks, SDKs, or transports, place it only in the outer layer and connect it to the inner layer through a port/interface.
 - When modifying a use case or entity, keep it testable without starting the RDC library, physical GPUs, or external systems.
 - If a new interface is needed, first confirm that it is driven by the needs of the consuming side rather than created to wrap a concrete implementation.
 - Do not create new domain terms, types, fields, or metric semantics before the domain semantics are confirmed; naming must conform to the established ubiquitous language.
-- If a change affects the core domain, raise the review intensity and synchronously update this document and the tests.
+- If a change affects the value-creating rules (metric collection, scale conversion, or label semantics), raise the review intensity and synchronously update this document and the tests.
 - When modifying architectural boundaries, data boundaries, or the direction of dependency, update the documentation and tests synchronously.
 - Must follow the Go comment, naming, error handling, and testing rules in [`coding-style.md`](coding-style.md).

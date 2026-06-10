@@ -7,13 +7,20 @@ it can also use the kubelet pod-resources API to attach workload labels such as
 
 ## Documentation
 
-Start here for deployment:
+Start here:
 
 | Topic | Document |
 | --- | --- |
+| Configuration guide (English) | [`docs/configuration/README.md`](docs/configuration/README.md) |
+| Configuration guide (繁體中文) | [`docs/configuration/README_zhtw.md`](docs/configuration/README_zhtw.md) |
+| Configuration guide (简体中文) | [`docs/configuration/README_zhcn.md`](docs/configuration/README_zhcn.md) |
 | Kubernetes deployment guide (English) | [`docs/deployment/k8s/README.md`](docs/deployment/k8s/README.md) |
 | Kubernetes deployment guide (繁體中文) | [`docs/deployment/k8s/README_zhtw.md`](docs/deployment/k8s/README_zhtw.md) |
 | Kubernetes deployment guide (简体中文) | [`docs/deployment/k8s/README_zhcn.md`](docs/deployment/k8s/README_zhcn.md) |
+
+The configuration guide explains the two-layer model (metric list + catalog),
+how to select metrics, how to adjust value units with `scale`, and how this
+differs from the NVIDIA DCGM exporter.
 
 The Kubernetes guide covers the AMD GPU device-plugin, node-labeller,
 `rdc-exporter` DaemonSet, ConfigMap-based metric selection, pod-resources socket
@@ -74,6 +81,10 @@ gpu_memory_usage{container="vllm",gpu_index="0",namespace="default",pod="vllm-qw
 ```
 
 ## Usage
+
+The examples below are a quick reference. For the full configuration model —
+metric list vs. catalog, unit scaling, merge/overwrite, and a comparison with the
+NVIDIA DCGM exporter — see the [configuration guide](docs/configuration/README.md).
 
 ### Monitoring Specific Metrics
 
