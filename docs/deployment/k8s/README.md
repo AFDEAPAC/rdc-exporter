@@ -1,5 +1,7 @@
 # rdc-exporter Deployment Guide
 
+[繁體中文](README_zhtw.md) | [简体中文](README_zhcn.md)
+
 ## 1. Purpose
 
 This guide explains how to deploy `rdc-exporter` on an existing Kubernetes cluster to collect AMD GPU monitoring metrics and associate those metrics with the workloads (Pods) that actually use the GPUs. It covers:
@@ -91,6 +93,15 @@ The last command should output the GPU count (for example, `8`), indicating that
 
 ### 5.1 Manifest
 
+`rdc-exporter` container images are published to GitHub Container Registry (GHCR). Pick a release from the table below and use it as the container `image` in the manifest (the example uses the latest):
+
+| Image tag | ROCm version | Release date |
+| --- | --- | --- |
+| `ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.4-20260610` | 7.2.4 | 2026-06-10 (latest) |
+| `ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.2-20260609` | 7.2.2 | 2026-06-09 |
+
+The tag format is `v1-rocm<ROCm-version>-<YYYYMMDD>`.
+
 `rdc-exporter` is deployed as a DaemonSet on every GPU node and uses a ConfigMap to provide the list of metrics to collect. Save the following content as `rdc-exporter.yaml`.
 
 > Before applying, confirm two settings: the metrics list in Section 5.2, and the pod-resources socket path in Section 5.3.
@@ -143,7 +154,7 @@ spec:
       hostNetwork: true
       containers:
         - name: rdc-exporter
-          image: ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.2-20260609
+          image: ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.4-20260610
           imagePullPolicy: IfNotPresent
           # -k specifies the kubelet pod-resources socket; -f specifies the metrics list provided by the ConfigMap
           args:

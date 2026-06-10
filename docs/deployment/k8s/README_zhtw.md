@@ -1,5 +1,7 @@
 # rdc-exporter 部署指南
 
+[English](README.md) | [简体中文](README_zhcn.md)
+
 ## 1. 文件目的
 
 本指南說明如何在既有的 Kubernetes 叢集上部署 `rdc-exporter`，以採集 AMD GPU 監控指標，並將指標關聯至實際使用 GPU 的工作負載（Pod）。內容涵蓋：
@@ -91,6 +93,15 @@ kubectl get nodes -o jsonpath='{.items[0].status.allocatable.amd\.com/gpu}'
 
 ### 5.1 資訊清單
 
+`rdc-exporter` 容器映像發佈於 GitHub Container Registry（GHCR）。請從下表挑選一個版本作為資訊清單中的容器 `image`（範例使用最新版）：
+
+| 映像標籤（image tag） | ROCm 版本 | 發佈日期 |
+| --- | --- | --- |
+| `ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.4-20260610` | 7.2.4 | 2026-06-10（最新） |
+| `ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.2-20260609` | 7.2.2 | 2026-06-09 |
+
+標籤格式為 `v1-rocm<ROCm 版本>-<YYYYMMDD>`。
+
 `rdc-exporter` 以 DaemonSet 形式部署於每個 GPU 節點，並使用 ConfigMap 提供要採集的指標清單。請將下列內容存為 `rdc-exporter.yaml`。
 
 > 套用前請先確認兩項設定：第 5.2 節的監控指標清單，以及第 5.3 節的 pod-resources socket 路徑。
@@ -143,7 +154,7 @@ spec:
       hostNetwork: true
       containers:
         - name: rdc-exporter
-          image: ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.2-20260609
+          image: ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.4-20260610
           imagePullPolicy: IfNotPresent
           # -k 指定 kubelet pod-resources socket；-f 指定 ConfigMap 提供的指標清單
           args:

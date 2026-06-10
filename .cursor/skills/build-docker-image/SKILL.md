@@ -1,6 +1,6 @@
 ---
 name: build-docker-image
-description: Build the rdc-exporter container image from the repository Dockerfile (ROCm 7.2.2 base) to verify the whole project — including the cgo RDC bindings that need real rdc.h headers — compiles cleanly, tagging it ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.2-<date>; supports --date <YYYYMMDD>, --tag <full-tag>, --no-verify (skip the full go build/vet/test pass), and --push. Use when the user runs /build-docker-image or asks to build the docker image, verify the code compiles via docker, or produce a release image.
+description: Build the rdc-exporter container image through the Makefile (make image) to verify the whole project — including the cgo RDC bindings that need real rdc.h headers — compiles cleanly. ROCm/Go versions and the image tag (ghcr.io/maple52046/rdc-exporter:v1-rocm<ROCM_VERSION>-<date>) are owned by the Makefile and passed into the Dockerfile via --build-arg; supports --date <YYYYMMDD>, --no-verify (skip the full go build/vet/test pass), --push, and --tag <full-tag> (overwrite only). Use when the user runs /build-docker-image or asks to build the docker image, verify the code compiles via docker, or produce a release image.
 disable-model-invocation: true
 ---
 

@@ -1,102 +1,113 @@
 # AMD RDC Exporter
 
-`rdc-exporter` is a Prometheus Exporter written in Go, integrating RDC (ROCm Data Center Tool) to collect GPU-related monitoring metrics. It can be deployed in GPU container environments to enable reliable and scalable GPU resource monitoring and visualization.
+`rdc-exporter` is a Prometheus exporter for AMD GPUs. It uses ROCm Data Center
+Tool (RDC) to collect GPU metrics and exposes them on `/metrics`. In Kubernetes,
+it can also use the kubelet pod-resources API to attach workload labels such as
+`namespace`, `pod`, and `container` to GPU metrics.
 
-# Quickstart
+## Documentation
 
-Start rdc-exporter container on a GPU node:
+Start here for deployment:
+
+| Topic | Document |
+| --- | --- |
+| Kubernetes deployment guide (English) | [`docs/deployment/k8s/README.md`](docs/deployment/k8s/README.md) |
+| Kubernetes deployment guide (繁體中文) | [`docs/deployment/k8s/README_zhtw.md`](docs/deployment/k8s/README_zhtw.md) |
+| Kubernetes deployment guide (简体中文) | [`docs/deployment/k8s/README_zhcn.md`](docs/deployment/k8s/README_zhcn.md) |
+
+The Kubernetes guide covers the AMD GPU device-plugin, node-labeller,
+`rdc-exporter` DaemonSet, ConfigMap-based metric selection, pod-resources socket
+path, profiling counter limits, and a vLLM workload verification example.
+
+## Release Images
+
+Official release images are published to GitHub Container Registry (GHCR):
+
+| Image | ROCm version | Release date |
+| --- | --- | --- |
+| `ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.4-20260610` | 7.2.4 | 2026-06-10 |
+| `ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.2-20260609` | 7.2.2 | 2026-06-09 |
+
+## Quickstart on a GPU Node
+
+Start `rdc-exporter` on a GPU node:
 
 ```bash
-$ docker run -dit --name rdc-exporter --device=/dev/kfd --device=/dev/dri --cap-add SYS_ADMIN -p 5000:5000 rdc-exporter:v1-rocm6.3-20250827
-$ curl localhost:5000/metrics
-# HELP active_cycles RDC field value for active_cycles
-# TYPE active_cycles gauge
-active_cycles{gpu_index="0"} 4.470398e+06
-active_cycles{gpu_index="1"} 3.790848e+06
-active_cycles{gpu_index="2"} 3.712511e+06
-active_cycles{gpu_index="3"} 4.169626e+06
-active_cycles{gpu_index="4"} 4.527142e+06
-active_cycles{gpu_index="5"} 4.112354e+06
-active_cycles{gpu_index="6"} 4.16357e+06
-active_cycles{gpu_index="7"} 3.324068e+06
+docker run -dit --name rdc-exporter \
+  --device=/dev/kfd \
+  --device=/dev/dri \
+  --cap-add SYS_PTRACE \
+  -p 5000:5000 \
+  ghcr.io/maple52046/rdc-exporter:v1-rocm7.2.4-20260610
+
+curl localhost:5000/metrics
+```
+
+Example output:
+
+```text
 # HELP gpu_memory_usage Memory usage of the GPU instance
 # TYPE gpu_memory_usage gauge
 gpu_memory_usage{gpu_index="0"} 1335.6769279999999
 gpu_memory_usage{gpu_index="1"} 1335.611392
-gpu_memory_usage{gpu_index="2"} 1997.991936
-gpu_memory_usage{gpu_index="3"} 1335.697408
-gpu_memory_usage{gpu_index="4"} 1335.615488
-gpu_memory_usage{gpu_index="5"} 1335.615488
-gpu_memory_usage{gpu_index="6"} 1335.615488
-gpu_memory_usage{gpu_index="7"} 1335.607296
 ```
 
 ## Quickstart on Kubernetes
 
-Deploy rdc-exporter using a k8s DaemonSet:
+For production-like Kubernetes deployment, read the full guide first:
+
+- [`docs/deployment/k8s/README.md`](docs/deployment/k8s/README.md)
+
+For a minimal example manifest:
 
 ```bash
-$ kubectl create ns monitoring
-$ kubectl -n monitoring apply -f exmaple/rdc-exporter-daemonset.yml
-$ curl localhost:5000/metrics
-# HELP active_cycles RDC field value for active_cycles
-# TYPE active_cycles gauge
-active_cycles{container="app-a",gpu_index="0",namespace="user1",pod="app-a-deploy-7c9f7d8b9c-abcde"} 3.4287908e+06
-active_cycles{container="app-a",gpu_index="1",namespace="user1",pod="app-a-deploy-7c9f7d8b9c-abcde"} 3.9199674e+06
-active_cycles{container="app-b",gpu_index="2",namespace="user2",pod="app-b-deploy-6df866c796-mhb7k"} 3.9111702e+06
-active_cycles{container="app-b",gpu_index="3",namespace="user2",pod="app-b-deploy-6df866c796-mhb7k"} 3.6580778e+06
-active_cycles{container="app-c",gpu_index="4",namespace="user3",pod="app-c-deploy-5d8f7c9b7c-xyz01"} 4.3101352e+06
-active_cycles{container="app-c",gpu_index="5",namespace="user3",pod="app-c-deploy-5d8f7c9b7c-xyz01"} 3.9691476e+06
-active_cycles{container="app-c",gpu_index="6",namespace="user3",pod="app-c-deploy-5d8f7c9b7c-xyz01"} 3.9955356e+06
-active_cycles{container="app-c",gpu_index="7",namespace="user3",pod="app-c-deploy-5d8f7c9b7c-xyz01"} 3.7312112e+06
+kubectl create namespace monitoring
+kubectl -n monitoring apply -f example/rdc-exporter-daemonset.yml
+curl localhost:5000/metrics
 ```
 
-# Usage
+When workloads request GPUs through the AMD device-plugin
+(`resources.limits.amd.com/gpu`), exported metrics can include workload labels:
 
-## Monitoring specific metrics
+```text
+gpu_memory_usage{container="vllm",gpu_index="0",namespace="default",pod="vllm-qwen-..."} 287252.5
+```
 
-### Pass metrics in arguments
+## Usage
+
+### Monitoring Specific Metrics
+
+Pass fields directly:
 
 ```bash
 rdc-exporter -e RDC_FI_GPU_CLOCK,812
 ```
 
-### Run with a metric file
+Or read fields from a file:
 
 ```bash
 cat > metrics.txt <<EOF
 RDC_FI_GPU_CLOCK
 812
 EOF
+
 rdc-exporter -f metrics.txt
 ```
 
-## Monitoring specific gpus
+Each non-empty line is one RDC field name or numeric field ID. Lines beginning
+with `#` are ignored.
+
+### Monitoring Specific GPUs
 
 ```bash
 rdc-exporter -i 0,1
 ```
 
-## Scaling metric values
+### Scaling Metric Values
 
-If you want to change the output unit of a specific metric, you can use an external catalog file and set the scale for that metric. For example, for RDC_FI_GPU_MEMORY_TOTAL:
-
-RDC_FI_GPU_MEMORY_TOTAL outputs values in Bytes by default from RDC. However, rdc-exporter sets the scale for RDC_FI_GPU_MEMORY_TOTAL to 0.000001 by default. Therefore, the value you get from rdc-exporter will be in MB.
-
-```
-# HELP gpu_memory_total Total memory of the GPU instance
-# TYPE gpu_memory_total gauge
-gpu_memory_total{gpu_index="0"} 206141.652992
-gpu_memory_total{gpu_index="1"} 206141.652992
-gpu_memory_total{gpu_index="2"} 206141.652992
-gpu_memory_total{gpu_index="3"} 206141.652992
-gpu_memory_total{gpu_index="4"} 206141.652992
-gpu_memory_total{gpu_index="5"} 206141.652992
-gpu_memory_total{gpu_index="6"} 206141.652992
-gpu_memory_total{gpu_index="7"} 206141.652992
-```
-
-If you want to change the unit back to Bytes, you can create a catalog YAML to update the metric configuration:
+Use an external catalog file to override metric metadata such as scale. For
+example, `RDC_FI_GPU_MEMORY_TOTAL` is scaled to MB by default. To report it in
+bytes instead:
 
 ```yaml
 metrics:
@@ -104,21 +115,30 @@ metrics:
     scale: 1
 ```
 
-Then run rdc-exporter with the --catalog parameter and specify your YAML config file:
+Run `rdc-exporter` with the custom catalog:
 
 ```bash
 rdc-exporter --catalog catalog.yml
 ```
 
+## Building
+
+The `Makefile` owns the ROCm, Go, and image-tag build parameters. The most
+important ROCm value is `ROCM_DEB`: it is the actual AMD `amdgpu-install` package
+URL used by the Docker build to configure the ROCm apt repository. Keep
+`ROCM_VERSION` and `ROCM_DEB` in sync.
+
+```bash
+make build
+make image
+make image-verify
 ```
-# HELP gpu_memory_total Total memory of the GPU instance
-# TYPE gpu_memory_total gauge
-gpu_memory_total{gpu_index="0"} 2.06141652992e+11
-gpu_memory_total{gpu_index="1"} 2.06141652992e+11
-gpu_memory_total{gpu_index="2"} 2.06141652992e+11
-gpu_memory_total{gpu_index="3"} 2.06141652992e+11
-gpu_memory_total{gpu_index="4"} 2.06141652992e+11
-gpu_memory_total{gpu_index="5"} 2.06141652992e+11
-gpu_memory_total{gpu_index="6"} 2.06141652992e+11
-gpu_memory_total{gpu_index="7"} 2.06141652992e+11
+
+Override versions from the command line when needed:
+
+```bash
+make image \
+  ROCM_VERSION=7.2.4 \
+  ROCM_DEB=https://repo.radeon.com/amdgpu-install/7.2.4/ubuntu/noble/amdgpu-install_7.2.4.70204-1_all.deb \
+  GO_VERSION=1.26.4
 ```

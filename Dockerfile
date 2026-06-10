@@ -6,7 +6,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV _GLIBCXX_USE_CXX11_ABI=1
 
 ## Setup ROCm repo
-ARG ROCM_DEB="https://repo.radeon.com/amdgpu-install/7.2.2/ubuntu/noble/amdgpu-install_7.2.2.70202-1_all.deb"
+## ROCM_DEB / ROCM_VERSION / GO_VERSION are provided by the Makefile via --build-arg.
+ARG ROCM_DEB
 RUN apt update && \
     apt install -y wget && \
     wget -O /tmp/amdgpu-install.deb ${ROCM_DEB} && \
@@ -22,8 +23,7 @@ RUN apt update && \
     apt clean
 
 ## Setup ROCm environment
-ARG ROCM_VERSION="7.2.2"
-ENV ROCM_HOME="/opt/rocm-${ROCM_VERSION}"
+ENV ROCM_HOME="/opt/rocm"
 ENV C_INCLUDE_PATH="$ROCM_HOME/include:$C_INCLUDE_PATH"
 ENV CMAKE_PREFIX_PATH="$ROCM_HOME/lib/cmake:${CMAKE_PREFIX_PATH:-/usr/local/lib/cmake}"
 ENV CPLUS_INCLUDE_PATH="$ROCM_HOME/include:${CPLUS_INCLUDE_PATH:-/usr/local/include}"
@@ -40,7 +40,7 @@ RUN apt update && \
     apt clean
 
 ## Download and install Go
-ARG GO_VERSION="1.26.2"
+ARG GO_VERSION
 RUN wget -qO- https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 ENV PATH="/usr/local/go/bin:$PATH"
 
@@ -54,11 +54,12 @@ RUN make
 FROM base
 
 ARG BUILD_DATE
+ARG ROCM_VERSION
 LABEL org.opencontainers.image.title="rdc-exporter" \
-      org.opencontainers.image.authors="DCGPU System Eng TWN, AMD Inc." \
+      org.opencontainers.image.authors="Chen-Hao Ku <Bill.Ku@amd.com>" \
       org.opencontainers.image.description="RDC Exporter for AMD GPU" \
       org.opencontainers.image.source="https://github.com/maple52046/rdc-exporter" \
-      org.opencontainers.image.vendor="AMD Inc." \
+      org.opencontainers.image.vendor="DCGPU System Eng TWN, AMD Inc." \
       org.opencontainers.image.version="${BUILD_DATE:-20251210}" \
       com.amd.rocm.version="${ROCM_VERSION}"
 
