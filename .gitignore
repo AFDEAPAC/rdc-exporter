@@ -1,3 +1,6 @@
 *.log
 bin/
 docs/plans/manuscripts/*.md
+website/.vite/
+website/dist/
+website/node_modules/

@@ -1,0 +1,202 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens for the RDC Exporter site. Dark, technical, AMD-flavored:
+ * a red->amber "heat" accent for the GPU/AMD identity and a cyan->teal accent
+ * for the metrics/data side. Fonts use the system stack only so the single-file
+ * build stays fully self-contained and renders offline (file://).
+ */
+@theme {
+  --color-base: #060912;
+  --color-surface: #0c1220;
+  --color-surface-2: #111a2c;
+  --color-line: #1d2940;
+
+  --color-ink: #e8edf7;
+  --color-muted: #9aa7c0;
+  --color-faint: #6b7891;
+
+  --color-amd: #ed1c24;
+  --color-amd-2: #ff6a3d;
+  --color-ember: #ffb020;
+
+  --color-cyan: #22d3ee;
+  --color-teal: #2dd4bf;
+  --color-iris: #818cf8;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", "PingFang TC", "Microsoft JhengHei",
+    "Noto Sans CJK TC", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
+    "Fira Code", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-base);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Ambient page background: layered radial glows + a faint engineering grid. */
+.bg-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--color-base);
+  background-image:
+    radial-gradient(
+      60rem 40rem at 12% -10%,
+      rgba(237, 28, 36, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      55rem 38rem at 100% 0%,
+      rgba(34, 211, 238, 0.14),
+      transparent 55%
+    ),
+    radial-gradient(
+      50rem 50rem at 50% 120%,
+      rgba(129, 140, 248, 0.12),
+      transparent 60%
+    );
+}
+
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
+}
+
+@utility glass {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(8px);
+}
+
+@utility gradient-text {
+  background: linear-gradient(
+    100deg,
+    var(--color-amd) 0%,
+    var(--color-amd-2) 40%,
+    var(--color-ember) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility gradient-text-cool {
+  background: linear-gradient(
+    100deg,
+    var(--color-cyan) 0%,
+    var(--color-teal) 60%,
+    var(--color-iris) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Code blocks */
+pre,
+code,
+kbd {
+  font-family: var(--font-mono);
+}
+
+::selection {
+  background: rgba(237, 28, 36, 0.35);
+  color: #fff;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-base);
+}
+::-webkit-scrollbar-thumb {
+  background: #243150;
+  border-radius: 999px;
+  border: 3px solid var(--color-base);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #32436b;
+}
+
+/* Animated dash flow used by the SVG diagrams. */
+@keyframes dashflow {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+.flow {
+  stroke-dasharray: 6 10;
+  animation: dashflow 14s linear infinite;
+}
+.flow-fast {
+  stroke-dasharray: 5 9;
+  animation: dashflow 7s linear infinite;
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.node-pulse {
+  animation: pulseGlow 3.2s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.floaty {
+  animation: floaty 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow,
+  .flow-fast,
+  .node-pulse,
+  .floaty {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
