@@ -1,0 +1,42 @@
+rdc-exporter has been deployed as a DaemonSet in namespace "{{ .Release.Namespace }}".
+
+1. Check the DaemonSet pods (one per GPU node):
+
+   kubectl -n {{ .Release.Namespace }} get ds,pods -l app.kubernetes.io/instance={{ .Release.Name }} -o wide
+
+{{- if .Values.hostNetwork }}
+
+2. With hostNetwork enabled, /metrics is served on each node at port {{ .Values.listenPort }}.
+   On a GPU node:
+
+   curl -s localhost:{{ .Values.listenPort }}/metrics | head -20
+{{- else }}
+
+2. Port-forward to a pod to read /metrics:
+
+   POD=$(kubectl -n {{ .Release.Namespace }} get pod -l app.kubernetes.io/instance={{ .Release.Name }} -o jsonpath='{.items[0].metadata.name}')
+   kubectl -n {{ .Release.Namespace }} port-forward "$POD" {{ .Values.listenPort }}:{{ .Values.listenPort }}
+   curl -s localhost:{{ .Values.listenPort }}/metrics | head -20
+{{- end }}
+
+{{- if .Values.kubelet.enabled }}
+
+3. GPU-to-Pod association is enabled via the kubelet pod-resources socket:
+     host path : {{ .Values.kubelet.podResourcesSocket }}
+   If pod/namespace/container labels are missing from /metrics, confirm this path
+   matches the node's kubelet root-dir. For k0s use:
+     /var/lib/k0s/kubelet/pod-resources/kubelet.sock
+   Detect it on the node with: ps -ewwo args | grep -o 'root-dir=[^ ]*'
+{{- else }}
+
+3. Kubelet pod-resources association is disabled; metrics will carry only gpu_index.
+{{- end }}
+
+Collected metrics fields:
+{{- if .Values.metrics.existingConfigMap }}
+  provided by existing ConfigMap "{{ .Values.metrics.existingConfigMap }}".
+{{- else if .Values.metrics.enabled }}
+  defined in ConfigMap "{{ include "rdc-exporter.metricsConfigMapName" . }}" (key metrics.txt).
+{{- else }}
+  using the exporter's built-in default field set.
+{{- end }}

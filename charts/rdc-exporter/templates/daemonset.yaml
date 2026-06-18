@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "rdc-exporter.fullname" . }}
+  labels:
+    {{- include "rdc-exporter.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "rdc-exporter.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    {{- toYaml .Values.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rdc-exporter.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "rdc-exporter.serviceAccountName" . }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      {{- if .Values.hostNetwork }}
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      restartPolicy: Always
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      containers:
+        - name: rdc-exporter
+          image: {{ include "rdc-exporter.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "-l"
+            - ":{{ .Values.listenPort }}"
+            {{- if .Values.kubelet.enabled }}
+            - "-k"
+            - {{ .Values.kubelet.mountPath | quote }}
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - "-f"
+            - "{{ .Values.metrics.mountPath }}/metrics.txt"
+            {{- end }}
+            {{- if .Values.debug }}
+            - "-d"
+            {{- end }}
+            {{- if .Values.gpuIndexes }}
+            - "-i"
+            - "{{ join "," .Values.gpuIndexes }}"
+            {{- end }}
+            {{- if .Values.selfMonitoring }}
+            - "--self-monitoring"
+            {{- end }}
+            {{- range .Values.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.listenPort }}
+              protocol: TCP
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: dev-kfd
+              mountPath: {{ .Values.devices.kfd }}
+            - name: dev-dri
+              mountPath: {{ .Values.devices.dri }}
+            {{- if .Values.kubelet.enabled }}
+            - name: pod-resources-socket
+              mountPath: {{ .Values.kubelet.mountPath }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              mountPath: {{ .Values.metrics.mountPath }}
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: dev-kfd
+          hostPath:
+            path: {{ .Values.devices.kfd }}
+            type: CharDevice
+        - name: dev-dri
+          hostPath:
+            path: {{ .Values.devices.dri }}
+            type: Directory
+        {{- if .Values.kubelet.enabled }}
+        - name: pod-resources-socket
+          hostPath:
+            path: {{ .Values.kubelet.podResourcesSocket }}
+            type: Socket
+        {{- end }}
+        {{- if .Values.metrics.enabled }}
+        - name: metrics
+          configMap:
+            name: {{ include "rdc-exporter.metricsConfigMapName" . }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

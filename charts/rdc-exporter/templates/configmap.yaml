@@ -1,0 +1,13 @@
+{{- if and .Values.metrics.enabled (not .Values.metrics.existingConfigMap) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rdc-exporter.metricsConfigMapName" . }}
+  labels:
+    {{- include "rdc-exporter.labels" . | nindent 4 }}
+data:
+  metrics.txt: |
+    {{- range .Values.metrics.fields }}
+    {{ . }}
+    {{- end }}
+{{- end }}

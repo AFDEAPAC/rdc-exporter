@@ -1,0 +1,144 @@
+# Default values for rdc-exporter.
+# This is a YAML-formatted file. Values here mirror the runtime contract of the
+# upstream DaemonSet example: a privileged, host-networked DaemonSet that reads
+# the RDC devices and (optionally) the kubelet pod-resources socket.
+
+# nameOverride / fullnameOverride let you customize the generated resource names.
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/maple52046/rdc-exporter
+  # tag defaults to the chart appVersion when left empty.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# imagePullSecrets references registry credentials when pulling from a private registry.
+imagePullSecrets: []
+
+# listenPort is the container port the exporter serves /metrics on (the `-l :PORT` flag).
+listenPort: 5000
+
+# hostNetwork exposes /metrics directly on the node so Prometheus can scrape "node IP:listenPort".
+hostNetwork: true
+
+# debug enables verbose logging (the `-d` flag).
+debug: false
+
+# gpuIndexes restricts collection to specific GPU indexes (the `-i` flag). Empty means all GPUs.
+gpuIndexes: []
+
+# selfMonitoring registers Go/Process collectors on the exporter (the `--self-monitoring` flag).
+selfMonitoring: false
+
+# extraArgs are appended verbatim to the container command line.
+extraArgs: []
+
+# kubelet controls GPU-to-Pod association through the kubelet pod-resources API (the `-k` flag).
+kubelet:
+  enabled: true
+  # podResourcesSocket is the socket path ON THE HOST. It must match the node's kubelet root-dir.
+  #   - standard kubelet (kubeadm, etc.): /var/lib/kubelet/pod-resources/kubelet.sock
+  #   - k0s:                              /var/lib/k0s/kubelet/pod-resources/kubelet.sock
+  podResourcesSocket: /var/lib/kubelet/pod-resources/kubelet.sock
+  # mountPath is where the socket is mounted inside the container and the value passed to `-k`.
+  mountPath: /var/lib/kubelet/pod-resources/kubelet.sock
+
+# metrics configures the list of RDC fields to collect, provided to the exporter via `-f`.
+metrics:
+  # enabled renders a ConfigMap with metrics.txt and mounts it into the container.
+  enabled: true
+  # existingConfigMap, when set, is used instead of rendering a new ConfigMap. It must
+  # contain a "metrics.txt" key.
+  existingConfigMap: ""
+  # mountPath is the directory where metrics.txt is mounted; the exporter reads
+  # "{mountPath}/metrics.txt".
+  mountPath: /etc/rdc-exporter
+  # fields is one RDC field per entry (field name or numeric id). Blank lines and
+  # lines starting with "#" are ignored by the exporter.
+  #
+  # IMPORTANT: the number of metrics you can scrape simultaneously is hardware-dependent.
+  # Telemetry fields are cheap; profiling fields (RDC_FI_PROF_*) map to GPU PMC counters and
+  # are bounded by a hardware packet limit. Keep the profiling set modest.
+  fields:
+    # --- telemetry (amd-smi/sysfs, cheap) ---
+    - RDC_FI_GPU_CLOCK
+    - RDC_FI_MEM_CLOCK
+    - RDC_FI_MEMORY_TEMP
+    - RDC_FI_GPU_TEMP
+    - RDC_FI_POWER_USAGE
+    - RDC_FI_GPU_UTIL
+    - RDC_FI_GPU_MEMORY_USAGE
+    - RDC_FI_GPU_MEMORY_TOTAL
+    - RDC_FI_ECC_CORRECT_TOTAL
+    - RDC_FI_ECC_UNCORRECT_TOTAL
+    # --- profiling (PMC counters, hardware-limited; keep the count modest) ---
+    - RDC_FI_PROF_OCCUPANCY_PERCENT
+    - RDC_FI_PROF_GPU_UTIL_PERCENT
+    - RDC_FI_PROF_TENSOR_ACTIVE_PERCENT
+    - RDC_FI_PROF_ACTIVE_CYCLES
+    - RDC_FI_PROF_ELAPSED_CYCLES
+    - RDC_FI_PROF_EVAL_FLOPS_16
+
+# devices are the host GPU device nodes RDC needs to read.
+devices:
+  # kfd is the AMD KFD char device.
+  kfd: /dev/kfd
+  # dri is the DRI device directory (contains renderD* nodes).
+  dri: /dev/dri
+
+# securityContext for the exporter container. RDC requires elevated privileges to read GPU state.
+securityContext:
+  privileged: true
+  capabilities:
+    add:
+      - SYS_PTRACE
+
+# resources for the exporter container (left empty by default).
+resources: {}
+
+# updateStrategy mirrors the example: roll all nodes at once since this is node-local telemetry.
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 100%
+
+# tolerations default to scheduling on every node, including tainted control-plane/GPU nodes.
+tolerations:
+  - operator: Exists
+
+# nodeSelector / affinity constrain which nodes run the DaemonSet (empty = all nodes).
+nodeSelector: {}
+affinity: {}
+
+# priorityClassName optionally assigns a PriorityClass to the pods.
+priorityClassName: ""
+
+# podAnnotations / podLabels add extra metadata to the pods.
+podAnnotations: {}
+podLabels: {}
+
+serviceAccount:
+  # create toggles creation of a ServiceAccount for the DaemonSet.
+  create: true
+  # name overrides the generated ServiceAccount name; empty uses the chart fullname.
+  name: ""
+  annotations: {}
+
+# service optionally creates a Service for the exporter. With hostNetwork this is usually
+# unnecessary (Prometheus scrapes the node IP directly), so it is disabled by default.
+service:
+  enabled: false
+  type: ClusterIP
+  port: 5000
+  annotations: {}
+
+# serviceMonitor optionally creates a Prometheus Operator ServiceMonitor. Requires the
+# monitoring.coreos.com CRDs and service.enabled=true.
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+  relabelings: []
+  metricRelabelings: []

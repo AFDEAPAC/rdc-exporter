@@ -17,6 +17,7 @@ Start here:
 | Kubernetes deployment guide (English) | [`docs/deployment/k8s/README.md`](docs/deployment/k8s/README.md) |
 | Kubernetes deployment guide (繁體中文) | [`docs/deployment/k8s/README_zhtw.md`](docs/deployment/k8s/README_zhtw.md) |
 | Kubernetes deployment guide (简体中文) | [`docs/deployment/k8s/README_zhcn.md`](docs/deployment/k8s/README_zhcn.md) |
+| Helm chart | [`charts/rdc-exporter/README.md`](charts/rdc-exporter/README.md) |
 
 The configuration guide explains the two-layer model (metric list + catalog),
 how to select metrics, how to adjust value units with `scale`, and how this
@@ -65,7 +66,21 @@ For production-like Kubernetes deployment, read the full guide first:
 
 - [`docs/deployment/k8s/README.md`](docs/deployment/k8s/README.md)
 
-For a minimal example manifest:
+Deploy with the Helm chart ([`charts/rdc-exporter`](charts/rdc-exporter)):
+
+```bash
+helm install rdc-exporter ./charts/rdc-exporter -n monitoring --create-namespace
+curl localhost:5000/metrics
+```
+
+On k0s, override the host pod-resources socket path:
+
+```bash
+helm install rdc-exporter ./charts/rdc-exporter -n monitoring --create-namespace \
+  --set kubelet.podResourcesSocket=/var/lib/k0s/kubelet/pod-resources/kubelet.sock
+```
+
+Or apply the minimal example manifest directly:
 
 ```bash
 kubectl create namespace monitoring

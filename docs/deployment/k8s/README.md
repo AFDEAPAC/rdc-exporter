@@ -92,7 +92,26 @@ The last command should output the GPU count (for example, `8`), indicating that
 
 ## 5. Step 2: Deploy rdc-exporter
 
-### 5.1 Manifest
+You can deploy `rdc-exporter` in two equivalent ways:
+
+- **Method A — Helm chart** (`charts/rdc-exporter`): repeatable, parameterized installs.
+- **Method B — Raw manifest**: a single self-contained YAML you apply directly.
+
+Both produce the same privileged, host-networked DaemonSet. Sections 5.2 (metrics list), 5.3 (pod-resources socket path), and 5.4 (profiling limit) apply to both methods; for Helm they map to chart values as noted. The deployment commands for both methods are in Section 5.5.
+
+### 5.1 Deployment methods and manifest
+
+#### Method A — Helm chart
+
+The chart lives at [`charts/rdc-exporter`](../../../charts/rdc-exporter) and is documented in its [chart README](../../../charts/rdc-exporter/README.md). It renders the same DaemonSet shown below, plus the metrics ConfigMap, and exposes the common settings as values:
+
+- `metrics.fields`: the RDC field list (see Section 5.2).
+- `kubelet.podResourcesSocket`: the host pod-resources socket path (see Section 5.3).
+- `image.repository` / `image.tag`, `listenPort`, `tolerations`, `nodeSelector`, and more.
+
+Customize via a values file or `--set` flags; the install commands are in Section 5.5. The default `image.tag` follows the chart `appVersion`; override `image.tag` to pin a specific release from the table below.
+
+#### Method B — Raw manifest
 
 `rdc-exporter` container images are published to GitHub Container Registry (GHCR). Pick a release from the table below and use it as the container `image` in the manifest (the example uses the latest):
 
@@ -229,6 +248,8 @@ kubectl -n monitoring edit configmap rdc-exporter-metrics
 kubectl -n monitoring rollout restart daemonset/rdc-exporter
 ```
 
+> **Helm (Method A):** set the field list in `metrics.fields` (or point to your own ConfigMap with `metrics.existingConfigMap`) and apply with `helm upgrade`; the chart manages the ConfigMap and the `-f` argument.
+
 ### 5.3 Configure the pod-resources socket path
 
 `rdc-exporter` obtains the "GPU-to-Pod mapping" through the kubelet pod-resources socket. The manifest mounts that socket into the container via a hostPath, and its path must match the actual kubelet root-dir on the node. This path varies by Kubernetes distribution:
@@ -253,6 +274,8 @@ If the actual path differs from the default, adjust only the hostPath `path` in 
             type: Socket
 ```
 
+> **Helm (Method A):** set the host socket path with `kubelet.podResourcesSocket` (for k0s, `/var/lib/k0s/kubelet/pod-resources/kubelet.sock`). The chart handles the in-container mount path and the `-k` argument.
+
 ### 5.4 Caveat: the hardware limit on profiling metrics
 
 Profiling metrics (`RDC_FI_PROF_*`) map to GPU hardware performance counters (PMC), and these counters are packed into a single PMC packet. If too many profiling metrics are requested simultaneously, the GPU's PMC packet capacity is exceeded, causing the underlying profiling component to fail while building the packet, with an error similar to the following:
@@ -273,15 +296,44 @@ Recommended practice:
 
 ### 5.5 Deploy and verify
 
+Use either method below; both create the DaemonSet in the `monitoring` namespace.
+
+#### Method A — Helm chart
+
+```bash
+helm install rdc-exporter ./charts/rdc-exporter \
+  -n monitoring --create-namespace
+```
+
+On k0s, override the host socket path (see Section 5.3):
+
+```bash
+helm install rdc-exporter ./charts/rdc-exporter \
+  -n monitoring --create-namespace \
+  --set kubelet.podResourcesSocket=/var/lib/k0s/kubelet/pod-resources/kubelet.sock
+```
+
+Check the release status:
+
+```bash
+helm status rdc-exporter -n monitoring
+helm list -n monitoring
+```
+
+To change metrics or other settings later, edit your values and run `helm upgrade rdc-exporter ./charts/rdc-exporter -n monitoring ...`. To remove it, run `helm uninstall rdc-exporter -n monitoring`.
+
+#### Method B — Raw manifest
+
 ```bash
 kubectl create namespace monitoring
 kubectl apply -f rdc-exporter.yaml
 ```
 
-Verify the DaemonSet and the metrics endpoint:
+#### Verify (both methods)
 
 ```bash
-kubectl get pod -n monitoring -l app=rdc-exporter -o wide
+kubectl get pod -n monitoring -l app.kubernetes.io/name=rdc-exporter -o wide   # Helm
+kubectl get pod -n monitoring -l app=rdc-exporter -o wide                       # raw manifest
 curl -s localhost:5000/metrics | head -20
 ```
 

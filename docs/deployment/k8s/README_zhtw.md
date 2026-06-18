@@ -92,7 +92,26 @@ kubectl get nodes -o jsonpath='{.items[0].status.allocatable.amd\.com/gpu}'
 
 ## 5. 步驟二：部署 rdc-exporter
 
-### 5.1 資訊清單
+可用兩種等價方式部署 `rdc-exporter`：
+
+- **方式 A — Helm chart**（`charts/rdc-exporter`）：可重複、可參數化的安裝。
+- **方式 B — Raw manifest**：直接套用單一份完整 YAML。
+
+兩者都會產生相同的 privileged、hostNetwork DaemonSet。第 5.2 節（指標清單）、第 5.3 節（pod-resources socket 路徑）、第 5.4 節（profiling 上限）對兩種方式皆適用；Helm 方式對應到 chart values（如各節所述）。兩種方式的實際部署指令見第 5.5 節。
+
+### 5.1 部署方式與資訊清單
+
+#### 方式 A — Helm chart
+
+Chart 位於 [`charts/rdc-exporter`](../../../charts/rdc-exporter)，詳見其 [chart README](../../../charts/rdc-exporter/README.md)。它會產生與下方相同的 DaemonSet 及指標 ConfigMap，並將常用設定開放為 values：
+
+- `metrics.fields`：RDC 指標欄位清單（見第 5.2 節）。
+- `kubelet.podResourcesSocket`：節點上的 pod-resources socket 路徑（見第 5.3 節）。
+- `image.repository` / `image.tag`、`listenPort`、`tolerations`、`nodeSelector` 等。
+
+可透過 values 檔或 `--set` 客製；安裝指令見第 5.5 節。預設 `image.tag` 跟隨 chart 的 `appVersion`；若要鎖定下表中的特定版本，覆寫 `image.tag` 即可。
+
+#### 方式 B — Raw manifest
 
 `rdc-exporter` 容器映像發佈於 GitHub Container Registry（GHCR）。請從下表挑選一個版本作為資訊清單中的容器 `image`（範例使用最新版）：
 
@@ -229,6 +248,8 @@ kubectl -n monitoring edit configmap rdc-exporter-metrics
 kubectl -n monitoring rollout restart daemonset/rdc-exporter
 ```
 
+> **Helm（方式 A）：** 於 `metrics.fields` 設定欄位清單（或以 `metrics.existingConfigMap` 指向自備的 ConfigMap），再以 `helm upgrade` 套用；ConfigMap 與 `-f` 參數由 chart 管理。
+
 ### 5.3 設定 pod-resources socket 路徑
 
 `rdc-exporter` 透過 kubelet 的 pod-resources socket 取得「GPU 與 Pod 的對應關係」。資訊清單以 hostPath 將該 socket 掛載至容器，其路徑必須與節點上實際的 kubelet root-dir 相符。此路徑因 Kubernetes 發行版而異：
@@ -253,6 +274,8 @@ ps -ewwo args | grep -o 'root-dir=[^ ]*'
             type: Socket
 ```
 
+> **Helm（方式 A）：** 以 `kubelet.podResourcesSocket` 設定節點上的 socket 路徑（k0s 為 `/var/lib/k0s/kubelet/pod-resources/kubelet.sock`）。容器內掛載路徑與 `-k` 參數由 chart 處理。
+
 ### 5.4 注意事項：Profiling 指標的硬體上限
 
 Profiling 指標（`RDC_FI_PROF_*`）對應 GPU 硬體效能計數器（PMC），這些計數器會被打包進單一 PMC 封包。若同時要求過多 profiling 指標，將超出 GPU 的 PMC 封包容量，導致底層 profiling 元件於建立封包時失敗，並出現類似下列的錯誤：
@@ -273,15 +296,44 @@ Could not create PMC packets! AQLProfile Return Code: 4096
 
 ### 5.5 部署與驗證
 
+以下兩種方式擇一即可，兩者都會在 `monitoring` namespace 中建立 DaemonSet。
+
+#### 方式 A — Helm chart
+
+```bash
+helm install rdc-exporter ./charts/rdc-exporter \
+  -n monitoring --create-namespace
+```
+
+在 k0s 上，請覆寫節點 socket 路徑（見第 5.3 節）：
+
+```bash
+helm install rdc-exporter ./charts/rdc-exporter \
+  -n monitoring --create-namespace \
+  --set kubelet.podResourcesSocket=/var/lib/k0s/kubelet/pod-resources/kubelet.sock
+```
+
+檢視 release 狀態：
+
+```bash
+helm status rdc-exporter -n monitoring
+helm list -n monitoring
+```
+
+日後若要調整指標或其他設定，編輯 values 後執行 `helm upgrade rdc-exporter ./charts/rdc-exporter -n monitoring ...`。若要移除，執行 `helm uninstall rdc-exporter -n monitoring`。
+
+#### 方式 B — Raw manifest
+
 ```bash
 kubectl create namespace monitoring
 kubectl apply -f rdc-exporter.yaml
 ```
 
-驗證 DaemonSet 與指標端點：
+#### 驗證（兩種方式皆適用）
 
 ```bash
-kubectl get pod -n monitoring -l app=rdc-exporter -o wide
+kubectl get pod -n monitoring -l app.kubernetes.io/name=rdc-exporter -o wide   # Helm
+kubectl get pod -n monitoring -l app=rdc-exporter -o wide                       # raw manifest
 curl -s localhost:5000/metrics | head -20
 ```
 
